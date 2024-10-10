@@ -35,4 +35,4 @@ jobs:
           host: ${{ secrets.REMOTE_HOST }}
           user: ${{ secrets.REMOTE_USERNAME }}
           key: ${{ secrets.PRIVATE_KEY }}
-          post_upload: sudo nginx -s reload
+          post_upload: nginx -s reload
