@@ -1,0 +1,21 @@
+.typedElement {
+    display: inline-block;
+    /* 保持文本为内联块元素 */
+    white-space: nowrap;
+    /* 防止换行 */
+    min-width: 200px;
+    min-height: 80px;
+    /* 设置最小宽度，防止缩进 */
+    font-size: 48px;
+    /* 字体大小 */
+}
+
+@keyframes blink {
+    0%,
+    100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0;
+    }
+}

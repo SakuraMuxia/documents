@@ -4,22 +4,20 @@ import useDocusaurusContext from '@docusaurus/useDocusaurusContext';
 import Layout from '@theme/Layout';
 import HomepageFeatures from '@site/src/components/HomepageFeatures';
 import Heading from '@theme/Heading';
+import TypedText from '@site/src/components/TypedText'
 
 import styles from './index.module.css';
 
 function HomepageHeader() {
     const { siteConfig } = useDocusaurusContext();
     return (
-        <header className={clsx('hero hero--primary', styles.heroBanner)}>
-            <div className="container">
-                <Heading as="h1" className="hero__title">
-                    {siteConfig.title}
-                </Heading>
-                <p className="hero__subtitle">{siteConfig.tagline}</p>
-                <div className={styles.buttons}>
-                    
-                </div>
-            </div>
+        <header className={styles.heroBanner}>
+            
+            <TypedText />
+            <p className="hero__subtitle">现代化开源文档</p>
+            <Link className="button button--primary" href="/blog">
+                开始使用
+            </Link>
         </header>
     );
 }

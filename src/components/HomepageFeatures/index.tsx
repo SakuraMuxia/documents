@@ -11,28 +11,28 @@ type FeatureItem = {
 const FeatureList: FeatureItem[] = [
     {
         title: '阅读',
-        Svg: require('@site/static/img/undraw_docusaurus_mountain.svg').default,
+        Svg: require('@site/static/img/Homepage-reading.svg').default,
         description: (
             <>
-                怕什么真理无穷,进一寸有一寸的欢喜
+                进一寸有一寸的欢喜
             </>
         ),
     },
     {
         title: '专注',
-        Svg: require('@site/static/img/undraw_docusaurus_tree.svg').default,
+        Svg: require('@site/static/img/Homepage-patient.svg').default,
         description: (
             <>
-                但行好事,莫问前程,心之所向,无问东西
+                心之所向, 无问东西
             </>
         ),
     },
     {
         title: '勇气',
-        Svg: require('@site/static/img/undraw_docusaurus_react.svg').default,
+        Svg: require('@site/static/img/Homepage-courage.svg').default,
         description: (
             <>
-                成功不是终点,失败也并非末日,最重要的是继续前进的勇气
+                成功不是终点, 失败也并非末日
             </>
         ),
     },

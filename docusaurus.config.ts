@@ -105,47 +105,36 @@ const config: Config = {
         footer: {
             style: 'dark',
             links: [
-                {
-                    title: 'Docs',
-                    items: [
-                        {
-                            label: 'Tutorial',
-                            to: '/docs/intro',
-                        },
-                    ],
-                },
+                
                 {
                     title: 'Community',
                     items: [
                         {
-                            label: 'Stack Overflow',
-                            href: 'https://stackoverflow.com/questions/tagged/docusaurus',
+                            label: 'bilibili',
+                            href: 'https://space.bilibili.com/69727471',
                         },
                         {
-                            label: 'Discord',
-                            href: 'https://discordapp.com/invite/docusaurus',
+                            label: 'github',
+                            href: 'https://github.com/SakuraMuxia',
                         },
-                        {
-                            label: 'Twitter',
-                            href: 'https://twitter.com/docusaurus',
-                        },
+                        
                     ],
                 },
                 {
                     title: 'More',
                     items: [
                         {
-                            label: 'Blog',
-                            to: '/blog',
+                            label: 'Another doc',
+                            href: 'https://sakuramuxia.github.io/vitepress/',
                         },
                         {
-                            label: 'GitHub',
-                            href: 'https://github.com/sakuramuxia',
+                            label: 'weibo',
+                            href: 'https://weibo.com/u/3167925153',
                         },
                     ],
                 },
             ],
-            copyright: `Copyright © ${new Date().getFullYear()} By 雨落辰潇 Built with Docusaurus`,
+            copyright: `Copyright © ${new Date().getFullYear()} By 雨落辰潇`,
         },
         prism: {
             theme: prismThemes.github,
