@@ -3,7 +3,7 @@ name: 部署到 ECS
 on:
   push:
     branches:
-      - main
+      - master
 
 jobs:
   build-and-deploy:
