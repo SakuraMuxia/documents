@@ -78,7 +78,7 @@ const config: Config = {
         // Replace with your project's social card
         image: 'img/docusaurus-social-card.jpg',
         navbar: {
-            title: '文档站',
+            title: '雨落辰潇',
             logo: {
                 alt: 'My Site Logo',
                 src: 'img/logo.svg',

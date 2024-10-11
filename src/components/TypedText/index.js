@@ -8,7 +8,7 @@ const TypedText = () => {
     useEffect(() => {
         // 创建 Typed.js 的实例
         const typed = new Typed(el.current, {
-            strings: ['Welcome to yuluochenxiao!', 'Enjoy your stay!'], // 要显示的文本
+            strings: ['Welcome to you!', 'Enjoy your stay!'], // 要显示的文本
             typeSpeed: 50,
             backSpeed: 25,
             showCursor: false,
