@@ -50,8 +50,7 @@ const config: Config = {
                     sidebarPath: './sidebars.ts',
                     // Please change this to your repo.
                     // Remove this to remove the "edit this page" links.
-                    editUrl:
-                        'https://github.com/facebook/docusaurus/tree/main/packages/create-docusaurus/templates/shared/',
+                    // editUrl:'https://github.com/facebook/docusaurus/tree/main/packages/create-docusaurus/templates/shared/',
                 },
                 blog: {
                     showReadingTime: true,
@@ -89,6 +88,12 @@ const config: Config = {
                     sidebarId: 'frontEndSidebar',
                     position: 'left',
                     label: '前端',
+                },
+                {
+                    type: 'docSidebar',
+                    sidebarId: 'backEndSidebar',
+                    position: 'left',
+                    label: '后端',
                 },
                 {
                     type: 'search',
