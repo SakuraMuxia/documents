@@ -96,6 +96,12 @@ const config: Config = {
                     label: '后端',
                 },
                 {
+                    type: 'docSidebar',
+                    sidebarId: 'interViewSidebar',
+                    position: 'left',
+                    label: '面试',
+                },
+                {
                     type: 'search',
                     position: 'right', // 确保搜索框位于右侧
                 },
