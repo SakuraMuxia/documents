@@ -125,7 +125,30 @@ BFC是block Format Context，块级格式上下文。当元素满足了一定的
 
 ### 伪元素和伪类的区别
 
-伪元素：在内容元素的前后插入额外的元素和样式，
+伪元素：在内容元素的前后插入额外的元素和样式，这些元素并不在文档中生成。
+
+伪类：将特殊的效果添加到特定选择器上。它是已有元素上添加类别，不会产生新元素。
+
+伪类是通过在元素选择器上加入伪类改变元素状态，伪元素通过对元素的操作进行改变。
+
+### 对盒子模型的理解
+
+标准盒子模型
+
+![image-20250603095807351](https://2216847528.oss-cn-beijing.aliyuncs.com/asset/image-20250603095807351.png)
+
+IE盒子模型
+
+![image-20250603095824128](https://2216847528.oss-cn-beijing.aliyuncs.com/asset/image-20250603095824128.png)
+
+元素box-sizing属性来改变元素的盒模型
+
+```ts
+box-sizing:content-box 表示标准盒模型
+box-sizing:border-box 表示IE模型(怪异盒模型)
+```
+
+
 
 ### transform
 
@@ -167,6 +190,14 @@ translate改变位置时依然会占据空间，而定位会脱离文本流
 
 ```ts
 新增各种css选择器：ID选择器，类选择器，伪类选择器，属性选择器 标签选择器 伪元素选择器 全局选择器
+圆角：border-radius:8px
+多列布局：multi-column layout
+阴影和反射：shadowflect
+文字特效：text-shadow
+文字渲染：text-decoration
+线性渐变：gradient
+旋转：transform
+增加了旋转，缩放，定位，倾斜，动画，多背景。
 ```
 
 ### 媒体查询的理解
@@ -279,3 +310,4 @@ vw/vh:视图窗口有关的单位，vw相对于视图窗口的宽度，vh相对�
 * px是固定的像素
 * em和rem是相对长度单位，长度不是固定的，适合响应式布局
 * em是相对于父元素字体的大小。rem是相对于根元素。
+
