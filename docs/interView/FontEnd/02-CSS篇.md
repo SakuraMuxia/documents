@@ -189,16 +189,26 @@ translate改变位置时依然会占据空间，而定位会脱离文本流
 ### CSS3有哪些新特性
 
 ```ts
-新增各种css选择器：ID选择器，类选择器，伪类选择器，属性选择器 标签选择器 伪元素选择器 全局选择器
-圆角：border-radius:8px
-多列布局：multi-column layout
-阴影和反射：shadowflect
-文字特效：text-shadow
-文字渲染：text-decoration
-线性渐变：gradient
-旋转：transform
-增加了旋转，缩放，定位，倾斜，动画，多背景。
+1 新增各种css选择器：例如 :nth-child(),:not(),属性选择器，灵活的选中元素
+2 盒模型和视觉优化：例如 box-sizing border-box,border-radius圆角，box-shadow，text-shadow阴影，背景渐变 background-grandient
+3 动画和过渡效果：例如：transition平滑过渡，使用@keyframe和animation关键帧动画，transform支持旋转缩放移动。
+4 响应式设计：使用@media媒体查询实现不同界面样式适配
+5 布局增强：使用flexbox实现弹性布局，方便水平垂直居中，mult-column layout 多列排班
+6 新单位和函数：新增rem vw vh相对单位，使用calc() 实现动态计算值
+7 字体和效果：使用@font-face 引入自定义字体，使用opacity和filter添加透明度和图像特效
 ```
+
+### 常见的图片格式
+
+```ts
+bmp：无损的直接色的点阵图
+png：无损的点阵图
+JPEG：有损的采用直接色的点阵图
+svg：是无损的矢量图
+webp：是微软开发的一种新的图片格式，同时支持有损和无损的点阵图
+```
+
+
 
 ### 媒体查询的理解
 
@@ -247,6 +257,12 @@ print：打印机
 1. 在宏观设计上：希望优化CSS文件的目录结构，对现有CSS文件能够进行复用
 2. 在编码上：希望能够写出结构清晰，简明易懂的CSS，需要有一定的嵌套层级关系，更需要他有变量特性，计算能力，循环能力等。
 3. 在维护性上：更强的可编程性意味着更优质的代码结构，实现复用意味着更强的拓展能力，增强可维护性
+
+### 预处理器和后处理器是什么
+
+预处理器：less sass 用来预编译sass和less，增加css的复用。
+
+后处理器：postCss，给css属性添加浏览器私有前缀，实现跨浏览器兼容性的问题。
 
 ### 预处理器特性
 
