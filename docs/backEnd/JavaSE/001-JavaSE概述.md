@@ -8,6 +8,13 @@
 
 > 三者关系：JDK包含 JRE  JRE包含JVM  
 
+```java
+讲师：王浩栋
+B站：帅栋栋sdd
+```
+
+![image-20250707172458237](https://2216847528.oss-cn-beijing.aliyuncs.com/asset/image-20250707172458237.png)
+
 ## 配置环境
 
 ```ts
@@ -328,5 +335,11 @@ srt.toCharArray().var 可快速得到 char[] v1 = str.toCharArray()
 
 ```ts
 直接在子类中 写 父类中的方法名称 cure 回车
+```
+
+**多行编辑模式**
+
+```java
+选中文本，鼠标右击，点击 Column Selection Mode 或者 使用 Alt+shift+insert快捷键
 ```
 
