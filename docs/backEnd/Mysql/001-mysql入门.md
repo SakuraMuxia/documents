@@ -210,6 +210,110 @@ DataGrip 2023.3.4
 导出的时候选择，导出表结构和表数据。
 ```
 
+### 创建表方式
+
+1️⃣  **使用图形化界面创建表**
+
+1. **连接数据库**
+   - 打开 DataGrip → 在 **Database** 面板点击 **+ → Data Source → MySQL**（或其他数据库类型）
+   - 填写连接信息（主机、端口、用户名、密码）
+   - 测试连接成功后点击 **OK**
+2. **选择数据库**
+   - 展开连接 → 找到你要创建表的数据库 → 右键点击 **Tables → New → Table**
+3. **填写表名和字段**
+   - 在弹出的窗口中：
+     - **Table name**：输入表名
+     - **Columns**：
+       - 点击 **+** 添加字段
+       - 输入字段名
+       - 选择类型（如 `INT`, `VARCHAR(255)`, `DATETIME` 等）
+       - 可勾选 **Primary Key**、**Not Null**、**Auto Increment** 等选项
+4. **保存表**
+   - 确认无误后点击 **OK** 或 **Apply**
+   - 表会出现在数据库列表中
+
+💡 **Tip**：可以在界面下方切换到 **DDL** 标签页，DataGrip 会自动生成对应的 SQL 语句。
+
+------
+
+**2️⃣ 使用 SQL 语句创建表**
+
+1. **打开 SQL Console**
+   - 右键点击数据库 → **New → Console**
+2. **编写 SQL**
+
+```sql
+CREATE TABLE users (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    username VARCHAR(50) NOT NULL,
+    email VARCHAR(100),
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+```
+
+1. **执行 SQL**
+   - 按 **Ctrl+Enter**（Windows）或 **Cmd+Enter**（Mac）执行
+   - 执行成功后表会在 **Database** 面板中显示
+
+------
+
+**3️⃣ 查看和修改表**
+
+- **查看表结构**：右键表 → **Jump to DDL** 或 **Modify Table**
+- **修改表结构**：
+  - 图形化修改 → **Modify Table**
+  - 或直接写 `ALTER TABLE` SQL
+
+```sql
+ALTER TABLE users ADD COLUMN last_login DATETIME;
+```
+
+### Schema
+
+在 **MySQL** 里，**Schema** 基本上就是 **数据库（Database）** 的另一种叫法
+
+**基本概念**
+
+- **Schema = Database**
+  - 在 MySQL 中，创建一个 schema 就相当于创建一个数据库
+  - Schema 用来组织和存储表、视图、存储过程、函数等对象
+- **语法**：
+
+```sql
+-- 创建 schema（数据库）
+CREATE SCHEMA my_schema;
+
+-- 等价于
+CREATE DATABASE my_database;
+```
+
+> 注意：在 MySQL 中，`CREATE SCHEMA` 和 `CREATE DATABASE` 完全等价，功能一样。
+
+------
+
+**使用 Schema**
+
+- **切换当前 Schema / 数据库**：
+
+```sql
+USE my_schema;
+```
+
+- **查看所有 Schema**：
+
+```sql
+SHOW SCHEMAS;
+-- 或
+SHOW DATABASES;
+```
+
+- **删除 Schema**：
+
+```sql
+DROP SCHEMA my_schema;
+-- 等价于 DROP DATABASE my_schema;
+```
+
 ## SQL语句分类
 
 | 分类    | 作用                                                         |
@@ -376,6 +480,49 @@ JOIN employees e2 ON e1.manager_id = e2.id;
 ```
 
 ------
+
+#### 子查询结果别名
+
+```sql
+-- 假设有 exam 表
+CREATE TABLE exam (
+  id INT PRIMARY KEY AUTO_INCREMENT,
+  name VARCHAR(20),
+  subject VARCHAR(20),
+  score INT
+);
+
+INSERT INTO exam (name, subject, score) VALUES
+('张三', '数学', 90),
+('李四', '数学', 95),
+('王五', '数学', 85),
+('赵六', '语文', 88),
+('钱七', '语文', 92),
+('孙八', '语文', 92);
+
+-- 子查询 + join
+SELECT 
+  e.name, 
+  e.subject, 
+  e.score
+FROM exam e
+JOIN (
+  SELECT subject, MAX(score) AS max_score
+  FROM exam
+  GROUP BY subject
+) t 
+ON e.subject = t.subject 
+AND e.score = t.max_score;
+
+```
+
+```ts
+1、t 就是子查询结果的别名，可以改成任何合法名字，比如 max_result。
+2、在 ON 里就可以用 t.subject、t.max_score 来和外层表 e 关联。
+3、这个查询的意义：查找每个科目的最高分对应的学生。
+```
+
+
 
 #### 注意事项
 
@@ -829,6 +976,7 @@ select rand();
 | `RANK()`                     | 排名（有并列，跳过名次）   |
 | `DENSE_RANK()`               | 排名（有并列，不跳过名次） |
 | `SUM()/AVG()/COUNT() OVER()` | 窗口聚合                   |
+| `RANK() OVER(...)`           | 给结果集中的每一行分配排名 |
 
 🔖 使用示例：
 
@@ -847,6 +995,14 @@ select
   avg(salary) over(partition by dept) as avg_salary
 from employee;
 
+```
+
+```sql
+-- RANK() OVER(...) 窗口函数示例
+
+SELECT dept, name, salary,
+       RANK() OVER(PARTITION BY dept ORDER BY salary DESC) AS rnk
+FROM employee
 ```
 
  **（8）加密函数**
@@ -904,6 +1060,7 @@ select
 
 - 取两张表中**符合连接条件**的记录。
 - 交集效果。
+- 在 SQL 中，**直接写 `JOIN` 或 `INNER JOIN`**，默认是 **内连接（Inner Join）**，既不是左连接也不是右连接。
 
 ```sql
 -- 查询员工及其所在部门
@@ -1004,3 +1161,5 @@ on e.manager_id = m.id;
 | UNION      | 合并结果并去重                             | 字段数、类型需一致 |
 | UNION ALL  | 合并结果不去重                             | 性能更高           |
 | SELF JOIN  | 自己和自己关联                             | 处理树结构         |
+
+### 
