@@ -17,7 +17,144 @@ net start 服务名
 运行 -> services.msc 打开服务设置面板 -> 找到mysql打开80
 ```
 
-### 常用操作
+### 可视化工具
+
+```java
+navicat 客户端
+    
+DataGrip 2023.3.4
+```
+
+### 注释方式
+
+```sql
+# 来注释
+-- 来注释
+/* 来注释 */ 
+```
+
+### 导出和导入
+
+```java
+导出的时候选择，同时勾选表结构和表数据。
+```
+
+### 创建表方式
+
+1️⃣  **使用图形化界面创建表**
+
+1. **连接数据库**
+   - 打开 DataGrip → 在 **Database** 面板点击 **+ → Data Source → MySQL**（或其他数据库类型）
+   - 填写连接信息（主机、端口、用户名、密码）
+   - 测试连接成功后点击 **OK**
+2. **选择数据库**
+   - 展开连接 → 找到你要创建表的数据库 → 右键点击 **Tables → New → Table**
+3. **填写表名和字段**
+   - 在弹出的窗口中：
+     - **Table name**：输入表名
+     - **Columns**：
+       - 点击 **+** 添加字段
+       - 输入字段名
+       - 选择类型（如 `INT`, `VARCHAR(255)`, `DATETIME` 等）
+       - 可勾选 **Primary Key**、**Not Null**、**Auto Increment** 等选项
+4. **保存表**
+   - 确认无误后点击 **OK** 或 **Apply**
+   - 表会出现在数据库列表中
+
+💡 **Tip**：可以在界面下方切换到 **DDL** 标签页，DataGrip 会自动生成对应的 SQL 语句。
+
+------
+
+**2️⃣ 使用 SQL 语句创建表**
+
+1. **打开 SQL Console**
+
+```ts
+右键点击数据库 → New → Console
+```
+
+2. **编写 SQL**
+
+```sql
+CREATE TABLE users (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    username VARCHAR(50) NOT NULL,
+    email VARCHAR(100),
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+```
+
+3. **执行 SQL**
+
+------
+
+**3️⃣ 查看和修改表**
+
+- **查看表结构**：右键表 → **Jump to DDL** 或 **Modify Table**
+- **修改表结构**：
+  - 图形化修改 → **Modify Table**
+  - 或直接写 `ALTER TABLE` SQL：
+
+```sql
+ALTER TABLE users ADD COLUMN last_login DATETIME;
+```
+
+### Schema
+
+在 **MySQL** 里，**Schema** 基本上就是 **数据库（Database）** 的另一种叫法
+
+**基本概念**
+
+- **Schema = Database**
+  - 在 MySQL 中，创建一个 schema 就相当于创建一个数据库
+  - Schema 用来组织和存储表、视图、存储过程、函数等对象
+- **语法**：
+
+```sql
+-- 创建 schema（数据库）
+CREATE SCHEMA my_schema;
+
+-- 等价于
+CREATE DATABASE my_database;
+```
+
+> 注意：在 MySQL 中，`CREATE SCHEMA` 和 `CREATE DATABASE` 完全等价，功能一样。
+
+------
+
+**使用 Schema**
+
+- **切换当前 Schema / 数据库**：
+
+```sql
+USE my_schema;
+```
+
+- **查看所有 Schema**：
+
+```sql
+SHOW SCHEMAS;
+-- 或
+SHOW DATABASES;
+```
+
+- **删除 Schema**：
+
+```sql
+DROP SCHEMA my_schema;
+-- 等价于 DROP DATABASE my_schema;
+```
+
+## SQL语句分类
+
+| 分类    | 作用                                                         |
+| ------- | ------------------------------------------------------------ |
+| DDL语句 | 数据定义语句（Data Define Language），例如：创建（create），修改（alter），删除（drop）等 |
+| DML语句 | 数据操作语句，例如：增（insert)，删（delete），改（update），查（select） |
+| DCL语句 | 数据控制语句，例如：grant，commit，rollback等                |
+| DQL     | 数据查询语句 select                                          |
+
+## 常用语句
 
 数据库操作
 
@@ -188,412 +325,6 @@ SELECT USER();
 
 ```
 
-### 可视化工具
-
-```java
-navicat 客户端
-    
-DataGrip 2023.3.4
-```
-
-### 注释方式
-
-```sql
-# 来注释
--- 来注释
-/* 来注释 */ 
-```
-
-### 导出和导入
-
-```java
-导出的时候选择，导出表结构和表数据。
-```
-
-### 创建表方式
-
-1️⃣  **使用图形化界面创建表**
-
-1. **连接数据库**
-   - 打开 DataGrip → 在 **Database** 面板点击 **+ → Data Source → MySQL**（或其他数据库类型）
-   - 填写连接信息（主机、端口、用户名、密码）
-   - 测试连接成功后点击 **OK**
-2. **选择数据库**
-   - 展开连接 → 找到你要创建表的数据库 → 右键点击 **Tables → New → Table**
-3. **填写表名和字段**
-   - 在弹出的窗口中：
-     - **Table name**：输入表名
-     - **Columns**：
-       - 点击 **+** 添加字段
-       - 输入字段名
-       - 选择类型（如 `INT`, `VARCHAR(255)`, `DATETIME` 等）
-       - 可勾选 **Primary Key**、**Not Null**、**Auto Increment** 等选项
-4. **保存表**
-   - 确认无误后点击 **OK** 或 **Apply**
-   - 表会出现在数据库列表中
-
-💡 **Tip**：可以在界面下方切换到 **DDL** 标签页，DataGrip 会自动生成对应的 SQL 语句。
-
-------
-
-**2️⃣ 使用 SQL 语句创建表**
-
-1. **打开 SQL Console**
-   - 右键点击数据库 → **New → Console**
-2. **编写 SQL**
-
-```sql
-CREATE TABLE users (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    username VARCHAR(50) NOT NULL,
-    email VARCHAR(100),
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-);
-```
-
-1. **执行 SQL**
-   - 按 **Ctrl+Enter**（Windows）或 **Cmd+Enter**（Mac）执行
-   - 执行成功后表会在 **Database** 面板中显示
-
-------
-
-**3️⃣ 查看和修改表**
-
-- **查看表结构**：右键表 → **Jump to DDL** 或 **Modify Table**
-- **修改表结构**：
-  - 图形化修改 → **Modify Table**
-  - 或直接写 `ALTER TABLE` SQL
-
-```sql
-ALTER TABLE users ADD COLUMN last_login DATETIME;
-```
-
-### Schema
-
-在 **MySQL** 里，**Schema** 基本上就是 **数据库（Database）** 的另一种叫法
-
-**基本概念**
-
-- **Schema = Database**
-  - 在 MySQL 中，创建一个 schema 就相当于创建一个数据库
-  - Schema 用来组织和存储表、视图、存储过程、函数等对象
-- **语法**：
-
-```sql
--- 创建 schema（数据库）
-CREATE SCHEMA my_schema;
-
--- 等价于
-CREATE DATABASE my_database;
-```
-
-> 注意：在 MySQL 中，`CREATE SCHEMA` 和 `CREATE DATABASE` 完全等价，功能一样。
-
-------
-
-**使用 Schema**
-
-- **切换当前 Schema / 数据库**：
-
-```sql
-USE my_schema;
-```
-
-- **查看所有 Schema**：
-
-```sql
-SHOW SCHEMAS;
--- 或
-SHOW DATABASES;
-```
-
-- **删除 Schema**：
-
-```sql
-DROP SCHEMA my_schema;
--- 等价于 DROP DATABASE my_schema;
-```
-
-## SQL语句分类
-
-| 分类    | 作用                                                         |
-| ------- | ------------------------------------------------------------ |
-| DDL语句 | 数据定义语句（Data Define Language），例如：创建（create），修改（alter），删除（drop）等 |
-| DML语句 | 数据操作语句，例如：增（insert)，删（delete），改（update），查（select） |
-| DCL语句 | 数据控制语句，例如：grant，commit，rollback等                |
-| DQL     | 数据查询语句 select                                          |
-
-## 查询语句DQL
-
-### SELECT语句
-
-SELECT语句的基本语法：
-
-```sql
-SELECT 常量;
-SELECT 表达式;
-SELECT 函数;
-```
-
-例如：
-
-```sql
-SELECT 1;
-SELECT 9/2;
-SELECT NOW();
-```
-
-查询所有字段
-
-```sql
-SELECT * FROM employees;
-```
-
-查询指定字段
-
-```sql
-SELECT name, salary FROM employees;
-```
-
-带条件查询
-
-```sql
-SELECT name, salary 
-FROM employees
-WHERE salary > 5000;
-```
-
-排序
-
-```sql
-SELECT name, salary 
-FROM employees
-ORDER BY salary DESC;
-```
-
-分组统计
-
-```sql
-SELECT department_id, COUNT(*) AS total
-FROM employees
-GROUP BY department_id;
-
-```
-
-分组过滤
-
-```sql
-SELECT department_id, AVG(salary) AS avg_salary
-FROM employees
-GROUP BY department_id
-HAVING AVG(salary) > 6000;
-
-```
-
-分页
-
-```sql
-SELECT name, salary 
-FROM employees
-ORDER BY salary DESC
-LIMIT 0, 10;  -- 查询前10条
-
-```
-
-常配合 `WHERE`、`GROUP BY`、`HAVING`、`ORDER BY`、`LIMIT` 使用
-
-### 使用别名
-
-- 给 **表** 或 **字段** 临时起一个名字（仅在当前 SQL 语句中生效）
-- 使语句更简洁，更易读
-- 在多表查询或函数计算结果中，避免列名混乱
-
-别名分为 **字段别名** 和 **表别名**;
-
-#### 字段别名
-
-```sql
-SELECT 字段名 AS 别名
-FROM 表名;
-```
-
-> `AS` 可以省略，常用简写
-
-```sql
-SELECT 字段名 别名
-FROM 表名;
-```
-
-**示例**
-
-1、**给字段起别名**
-
-```sql
-SELECT name AS 姓名, salary AS 薪资
-FROM employees;
-```
-
-2、**计算字段并取别名**
-
-```sql
-SELECT salary * 12 AS 年薪
-FROM employees;
-```
-
-3、**别名中包含空格时需要引号**
-
-```sql
-SELECT name AS "员工 姓名", salary AS "月 薪"
-FROM employees;
-```
-
-4、**别名省略AS**
-
-```sql
-SELECT name "员工 姓名", salary "月 薪"
-FROM employees;
-```
-
-#### 表别名
-
-1、**给表起别名**
-
-```sql
-SELECT e.name, e.salary
-FROM employees AS e;
-```
-
-2、**多表查询时简化表名**
-
-```sql
-SELECT e.name, d.department_name
-FROM employees e
-JOIN departments d ON e.department_id = d.id;
-```
-
-3、**自连接时必须用别名**
-
-```sql
-SELECT e1.name AS 员工, e2.name AS 上级
-FROM employees e1
-JOIN employees e2 ON e1.manager_id = e2.id;
-```
-
-------
-
-#### 子查询结果别名
-
-```sql
--- 假设有 exam 表
-CREATE TABLE exam (
-  id INT PRIMARY KEY AUTO_INCREMENT,
-  name VARCHAR(20),
-  subject VARCHAR(20),
-  score INT
-);
-
-INSERT INTO exam (name, subject, score) VALUES
-('张三', '数学', 90),
-('李四', '数学', 95),
-('王五', '数学', 85),
-('赵六', '语文', 88),
-('钱七', '语文', 92),
-('孙八', '语文', 92);
-
--- 子查询 + join
-SELECT 
-  e.name, 
-  e.subject, 
-  e.score
-FROM exam e
-JOIN (
-  SELECT subject, MAX(score) AS max_score
-  FROM exam
-  GROUP BY subject
-) t 
-ON e.subject = t.subject 
-AND e.score = t.max_score;
-
-```
-
-```ts
-1、t 就是子查询结果的别名，可以改成任何合法名字，比如 max_result。
-2、在 ON 里就可以用 t.subject、t.max_score 来和外层表 e 关联。
-3、这个查询的意义：查找每个科目的最高分对应的学生。
-```
-
-
-
-#### 注意事项
-
-- `AS` 用于给字段或表起别名，可以省略；
-- 别名提高可读性，尤其在多表查询、计算字段、列名重复时非常有用；
-- 别名可在 `ORDER BY`、`HAVING` 使用，但不能在 `WHERE` 使用；
-
-### 结果去重
-
-使用 关键字 `distinct`关键字去重。
-
-**基本语法：**
-
-```sql
-SELECT DISTINCT 字段1, 字段2, ...
-FROM 表名
-[WHERE 条件];
-```
-
-**🔥 示例：**
-
-1、对单个字段去重
-
-```sql
-SELECT DISTINCT department_id
-FROM employees;
-```
-
-2、对多个字段联合去重
-
-```sql
-SELECT DISTINCT department_id, job_id
-FROM employees;
-```
-
-3、结合条件使用
-
-```sql
-SELECT DISTINCT name
-FROM employees
-WHERE salary > 5000;
-```
-
-4、和聚合函数一起用
-
-```sql
-SELECT COUNT(DISTINCT department_id)
-FROM employees;
-```
-
-**🔥 注意事项：**
-
-1、DISTINCT 作用范围是 整个字段组合，而不是单独某一个字段；
-
-```sql
-SELECT DISTINCT name, department_id
-FROM employees;
-```
-
-2、DISTINCT 不能直接写在部分字段前面，必须作用于整组；
-
-```sql
-❌ 错误写法
-SELECT name, DISTINCT department_id FROM employees;
-
-✅ 正确写法
-SELECT DISTINCT name, department_id FROM employees;
-```
-
-3、如果只是想去掉 重复行，用 DISTINCT；如果是对结果做更复杂的去重、排名，可以结合 ROW_NUMBER()、GROUP BY 等；
-
 ## 运算符
 
 ### 算术运算符
@@ -659,8 +390,6 @@ SELECT * FROM employees WHERE name LIKE '_A';
 show variables like '%character%';
 ```
 
-
-
 ### 逻辑运算符
 
 | 运算符       | 说明   | 示例                                                         |
@@ -689,8 +418,6 @@ select * from employee where empname = '男' || empage > 30;
 select * from employee where empage > 30 xor empsex = '男';
 
 ```
-
-
 
 ### null值处理
 
@@ -1046,120 +773,3 @@ select
 
 - **分组函数**：对多行做统计（SUM、COUNT、AVG…）。
 - **单行函数**：对单行做处理（ABS、SUBSTRING、NOW…）。
-
-## 关联查询
-
-📌 **什么是关联查询**
-
-关联查询（Join Query）指的是从**多个表**中根据一定的关系条件（通常是主键和外键的对应关系）获取数据。
- 常用于数据分布在不同表，需要组合展示时。
-
-📌 **关联查询结果分为几种情况**
-
-### 内连接（INNER JOIN）
-
-- 取两张表中**符合连接条件**的记录。
-- 交集效果。
-- 在 SQL 中，**直接写 `JOIN` 或 `INNER JOIN`**，默认是 **内连接（Inner Join）**，既不是左连接也不是右连接。
-
-```sql
--- 查询员工及其所在部门
-select e.id, e.name, d.dept_name
-from employee e
-inner join department d
-on e.dept_id = d.id;
-```
-
-### 左连接（LEFT JOIN）
-
-- 返回左表的所有记录，即使右表没有匹配，也会显示（右表字段为 `NULL`）。
-- 左表为主。
-
-```sql
--- 查询所有员工及部门（即便部门为空）
-select e.id, e.name, d.dept_name
-from employee e
-left join department d
-on e.dept_id = d.id;
-```
-
-### 右连接（RIGHT JOIN）
-
-- 返回右表的所有记录，即使左表没有匹配，也会显示（左表字段为 `NULL`）。
-- 右表为主。
-
-```sql
--- 查询所有部门及部门下员工（即便部门没人）
-select e.id, e.name, d.dept_name
-from employee e
-right join department d
-on e.dept_id = d.id;
-```
-
-### UNION / UNION ALL（联合查询）
-
-- **UNION**：对两个查询结果进行合并，并去重。
-- **UNION ALL**：对两个查询结果进行合并，不去重，效率更高。
-- 要求：**字段数一致，字段类型兼容**。
-
-```sql
--- 查询所有员工编号（来自正式员工和实习生两张表）
-select id, name from employee
-union
-select id, name from intern;
-```
-
-📌 **关联查询的SQL有几种情况**
-
-常见情况：
-
-1. **内连接**（inner join / join）
-2. **外连接**（left join、right join、full join）
-3. **交叉连接**（cross join，笛卡尔积）
-4. **联合查询**（union / union all）
-5. **自连接**（表与自身的关联查询）
-
-📌 **联合查询字段列表问题**
-
-使用 `UNION` 或 `UNION ALL` 时：
-
-1. 两个 `select` 的字段**数量必须一致**
-2. 对应字段的**类型必须兼容**（数值/字符串/日期）
-3. 字段名以**第一个查询的字段名为准**
-
-```sql
-select id, name from employee
-union
-select student_id, student_name from student;
--- 结果字段名是 id, name
-
-```
-
-### 自连接（SELF JOIN）
-
-**自连接**：同一张表与自身进行关联，用于处理表内层级关系（树结构、上下级关系等）。
-
-```sql
--- 查询员工及其上级领导姓名
-select 
-  e.id as emp_id, e.name as emp_name,
-  m.id as mgr_id, m.name as mgr_name
-from employee e
-left join employee m
-on e.manager_id = m.id;
-
-```
-
-📌 总结
-
-| 类型       | 作用                                       | 关键点             |
-| ---------- | ------------------------------------------ | ------------------ |
-| INNER JOIN | 取两表交集                                 | 匹配的行           |
-| LEFT JOIN  | 左表为主，右表可为空                       | 左表全有           |
-| RIGHT JOIN | 右表为主，左表可为空                       | 右表全有           |
-| FULL JOIN  | 左右表并集（MySQL 不支持，Oracle/PG 支持） | 全部行             |
-| UNION      | 合并结果并去重                             | 字段数、类型需一致 |
-| UNION ALL  | 合并结果不去重                             | 性能更高           |
-| SELF JOIN  | 自己和自己关联                             | 处理树结构         |
-
-### 
