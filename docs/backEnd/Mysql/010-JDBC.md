@@ -161,6 +161,41 @@ pst.setString(2,user);
 ResultSet resultSet = pst.executeQuery();
 ```
 
+prepareStatement(String sql,Statement.RETURN_GENERATED_KEYS);
+
+```java
+作用：创建一个 PreparedStatement对象,Statement.RETURN_GENERATED_KEYS 的作用就是 让 JDBC 在执行 INSERT 后返回数据库生成的自增主键，方便你在程序里继续使用（比如后续插入子表数据时需要用这个主键）
+    
+参数：String类型的SQL语句,Statement.RETURN_GENERATED_KEYS
+    
+返回值：PreparedStatement类型对象
+    
+示例：
+
+// 创建执行SQL语句的 PreparedStatement 对象，指定返回自增主键
+PreparedStatement pst = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS);
+
+// 传值：给 SQL 中的 ? 占位符设置值
+if (params != null && params.length > 0) {
+    for (int i = 0; i < params.length; i++) {
+        pst.setObject(i + 1, params[i]); // JDBC 的占位符索引从 1 开始
+    }
+}
+
+// 执行 SQL 语句（返回受影响的行数）
+int count = pst.executeUpdate();
+
+// 获取主键值（返回的是 ResultSet）
+ResultSet rs = pst.getGeneratedKeys();
+if (rs.next()) {
+    int id = rs.getInt(1); // 获取第一列（自增主键ID）
+    System.out.println("新插入记录的ID: " + id);
+}
+
+```
+
+
+
 ### Statement接口
 
 位于java.sql包中，用来执行sql的对象，他的实现类就是我们导入的mysql公司提供的jar包中的文件。
@@ -334,6 +369,26 @@ PrepareedStatement pst = connection.prepareStatement(sql);
 pst.setObject(1,new Date(System.currentTimeMills()));
 ```
 
+getGeneratedKeys()
+
+```java
+作用：获取主键值（返回的是 ResultSet）
+    
+参数：无
+    
+返回值：返回的是 ResultSet
+    
+示例：
+int count = pst.executeUpdate();
+
+// 获取主键值（返回的是 ResultSet）
+ResultSet rs = pst.getGeneratedKeys();
+if (rs.next()) {
+    int id = rs.getInt(1); // 获取第一列（自增主键ID）
+    System.out.println("新插入记录的ID: " + id);
+}
+```
+
 
 
 ### ResultSet接口
@@ -444,6 +499,65 @@ close()
 示例：
 resultSet.close()
 ```
+
+getMetaData()
+
+```java
+作用：获取表的元数据（列名、列类型、列数等信息）。
+	通常用于写通用的工具方法，比如查询结果不固定时，动态解析结果集。
+    
+参数：无
+    
+返回值：ResultSetMetaData类型
+    
+示例：
+```
+
+```java
+import java.sql.*;
+
+public class MetaDataDemo {
+    public static void main(String[] args) throws Exception {
+        // 1. 获取数据库连接
+        Connection conn = DriverManager.getConnection(
+                "jdbc:mysql://localhost:3306/testdb?useSSL=false&serverTimezone=UTC",
+                "root", "123456");
+
+        // 2. 执行查询
+        String sql = "SELECT id, fname, price, fcont, remark FROM goods";
+        PreparedStatement pst = conn.prepareStatement(sql);
+        ResultSet rs = pst.executeQuery();
+
+        // 3. 获取元数据
+        ResultSetMetaData metaData = rs.getMetaData();
+
+        // 4. 输出列的信息
+        int columnCount = metaData.getColumnCount(); // 列的数量
+        System.out.println("表包含的列数: " + columnCount);
+
+        for (int i = 1; i <= columnCount; i++) {
+            String columnName = metaData.getColumnName(i);   // 列名
+            String columnType = metaData.getColumnTypeName(i); // 列类型
+            System.out.println("列 " + i + ": " + columnName + "，类型: " + columnType);
+        }
+
+        // 5. 遍历结果数据
+        while (rs.next()) {
+            for (int i = 1; i <= columnCount; i++) {
+                System.out.print(rs.getObject(i) + "\t");
+            }
+            System.out.println();
+        }
+
+        // 6. 关闭资源
+        rs.close();
+        pst.close();
+        conn.close();
+    }
+}
+```
+
+
 
 ## CRUD
 
@@ -2052,6 +2166,49 @@ public class TestPool {
 	}
 }
 ```
+
+### DataSource接口
+
+这个接口位于 `javax.sql` 包中。
+
+构造方法
+
+```js
+无
+```
+
+方法
+
+getConnection() 
+
+```java
+作用：尝试建立与此 DataSource对象所代表的数据源的连接
+    
+参数：无
+    
+返回值：Connection类型数据
+    
+示例：
+//1、创建数据源（数据库连接池）对象
+DruidDataSource ds =new DruidDataSource();
+
+//2、设置参数
+//(1)设置基本参数
+ds.setDriverClassName("com.mysql.jdbc.Driver");
+ds.setUrl("jdbc:mysql://localhost:3306/test");
+ds.setUsername("root");
+ds.setPassword("123456");
+
+//(2)设置连接数等参数
+ds.setInitialSize(5);//一开始提前申请好5个连接，不够了，重写申请
+ds.setMaxActive(10);//最多不超过10个，如果10都用完了，还没还回来，就会出现等待
+ds.setMaxWait(1000);//用户最多等1000毫秒，如果1000毫秒还没有人还回来，就异常了
+
+//3、获取连接
+Connection conn = ds.getConnection(); 
+```
+
+
 
 ## 封装JDBCUtils
 
