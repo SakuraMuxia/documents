@@ -548,12 +548,27 @@ public class MetaDataDemo {
             }
             System.out.println();
         }
-
-        // 6. 关闭资源
-        rs.close();
-        pst.close();
-        conn.close();
+        // 关闭资源
+        ...
     }
+}
+```
+
+getObject(i)
+
+```java
+作用：获取当前行中指定列的值
+    
+参数：列的索引 int类型 1
+    
+返回值：Object
+    
+示例：
+while (rs.next()) {
+    for (int i = 1; i <= columnCount; i++) {
+        System.out.print(rs.getObject(i) + "\t");
+    }
+    System.out.println();
 }
 ```
 
