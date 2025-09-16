@@ -56,7 +56,7 @@ Thymeleaf是一款用于渲染XML/XHTML/HTML5内容的模板引擎。类似JSP�
 
 **物理视图和逻辑视图**
 
-在Servlet中，将请求转发到一个HTML页面文件时，使用的完整的转发路径就是<span style="color:blue;font-weight:bold;">物理视图</span>。
+在Servlet中，将请求转发到一个HTML页面文件时，使用的完整的转发路径就是物理视图。
 
 ```ts
 /pages/user/login_success.html
@@ -77,7 +77,7 @@ Thymeleaf是一款用于渲染XML/XHTML/HTML5内容的模板引擎。类似JSP�
 路径的开头都是：/pages/user/，路径的结尾都是：.html。
 ```
 
-所以，路径开头的部分我们称之为<span style="color:blue;font-weight:bold;">视图前缀</span>，路径结尾的部分我们称之为<span style="color:blue;font-weight:bold;">视图后缀</span>。
+所以，路径开头的部分我们称之为视图前缀，路径结尾的部分我们称之为视图后缀。
 
 **逻辑视图**
 
@@ -126,7 +126,7 @@ Thymeleaf是一款用于渲染XML/XHTML/HTML5内容的模板引擎。类似JSP�
 
 3、创建Servlet基类
 
-这个类大家直接<span style="color:blue;font-weight:bold;">复制粘贴</span>即可，将来使用框架后，这些代码都将被取代。
+这个类大家直接复制粘贴即可，将来使用框架后，这些代码都将被取代。
 
 ```java
 import org.thymeleaf.TemplateEngine;
@@ -282,12 +282,12 @@ ${} 这是thymeleaf的语法，表示thymeleaf表达式
 
 th:text作用
 
-- 不经过服务器解析，直接用浏览器打开HTML文件，看到的是『标签体原始值』
-- 经过服务器解析，Thymeleaf引擎根据th:text属性指定的『标签体新值』去<span style="color:blue;font-weight:bold;">替换</span>『标签体原始值』
+- 不经过服务器解析，直接用浏览器打开HTML文件，看到的是标签体原始值
+- 经过服务器解析，Thymeleaf引擎根据th:text属性指定的标签体新值去替换标签体原始值
 
 **字面量和变量**
 
-『字面量』是一个经常会遇到的概念，我们可以对照『变量』来理解它的含义。
+字面量是一个经常会遇到的概念，我们可以对照变量来理解它的含义。
 
 ```ts
 // a是变量，100是字面量
@@ -296,9 +296,9 @@ System.out.println("a = " + a);
 ```
 
 - 变量：变量名字符串本身不是它的值，它指向的才是它的值
-- 字面量：它就是字面上的含义，我们从『字面』上看到的直接就是它的值
+- 字面量：它就是字面上的含义，我们从字面上看到的直接就是它的值
 
-现在我们在th:text属性中使用的就是『字面量』，它<span style="color:blue;font-weight:bold;">不指代任何其他值</span>。
+现在我们在th:text属性中使用的就是字面量，它不指代任何其他值。
 
 **修改指定属性值**
 
@@ -306,7 +306,7 @@ System.out.println("a = " + a);
 <input type="text" name="username" th:value="文本框新值" value="文本框旧值" />
 ```
 
-语法：任何HTML标签原有的属性，前面加上『th:』就都可以通过Thymeleaf来设定新值。
+语法：任何HTML标签原有的属性，前面加上th:就都可以通过Thymeleaf来设定新值。
 
 **解析URL地址**
 
@@ -320,7 +320,7 @@ System.out.println("a = " + a);
 
 > /webday08/index.html
 
-所以@{}的作用是<span style="color:blue;font-weight:bold;">在字符串前附加『上下文路径』</span>
+所以@{}的作用是在字符串前附加上下文路径
 
 > 这个语法的好处是：实际开发过程中，项目在不同环境部署时，Web应用的名字有可能发生变化。所以上下文路径不能写死。而通过@{}动态获取上下文路径后，不管怎么变都不怕啦！
 
@@ -391,7 +391,7 @@ request.setAttribute(requestAttrName, requestAttrValue);
 
 Thymeleaf表达式：
 
-```ts
+```html
 <p th:text="${helloRequestAttr}">request field value</p>
 ```
 
@@ -435,7 +435,7 @@ Thymeleaf表达式：
 
  **获取请求参数的语法**
 
-```html
+```java
 ${param.参数名}
 ```
 
@@ -470,7 +470,7 @@ ${param.参数名}
 
 ### 内置对象
 
-内置对象的概念：所谓内置对象其实就是在Thymeleaf的表达式中<span style="color:blue;font-weight:bold;">可以直接使用</span>的对象。
+内置对象的概念：所谓内置对象其实就是在Thymeleaf的表达式中可以直接使用的对象。
 
 ![image-20250915152826904](https://2216847528.oss-cn-beijing.aliyuncs.com/asset/image-20250915152826904.png)
 
@@ -529,25 +529,36 @@ OGNL：Object-Graph Navigation Language对象-图 导航语言，实际上调用
 **起点**
 
 - 访问属性域的起点
-  - 请求域属性名
-  - session
-  - application
+  
+  请求域属性名
+  
+  session
+  
+  application
 - param
 - 内置对象
-  - request
-  - session
-  - lists
-  - strings
+  
+  request
+  
+  session
+  
+  lists
+  
+  strings
 
 **属性访问语法**
 
 - 访问对象属性：使用getXxx()、setXxx()方法定义的属性
-  - 对象.属性名
+  
+  对象.属性名
 - 访问List集合或数组
-  - 集合或数组[下标]
+  
+  集合或数组[下标]
 - 访问Map集合
-  - Map集合.key
-  - Map集合['key']
+  
+  Map集合.key
+  
+  Map集合['key']
 
 ### 分支与迭代
 
