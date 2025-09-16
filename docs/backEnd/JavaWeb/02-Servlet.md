@@ -1,5 +1,7 @@
 # Servlet技术
 
+Servlet 技术本质上是 **处理请求的，不是专门用来渲染页面的**。
+
 ## 基本概念
 
 1、Servlet 是JavaEE 规范之一。规范就是接口
@@ -17,6 +19,19 @@
 **定义**：这是最顶层的 Servlet 接口，规定了 `init()`、`service()`、`destroy()` 等生命周期方法。
 
 **作用**：所有 Servlet 都必须实现它（直接实现，或者通过 `GenericServlet` / `HttpServlet` 间接实现）。
+
+```java
+public interface Servlet {
+    void init(ServletConfig config) throws ServletException;
+    ServletConfig getServletConfig();
+    void service(ServletRequest req, ServletResponse res) throws ServletException, IOException;
+    String getServletInfo();
+    void destroy();
+}
+
+```
+
+
 
 ### GenericServlet类
 
@@ -50,9 +65,134 @@ public class MyServlet extends GenericServlet {
 }
 ```
 
+### HttpServlet类
 
+`HttpServlet` 是 **GenericServlet 的子类**，专门用来处理 HTTP 协议请求（GET、POST 等）。
 
-### ServletRequest类
+源代码结构
+
+```java
+public abstract class HttpServlet extends GenericServlet {
+    protected void doGet(HttpServletRequest req, HttpServletResponse resp) {}
+    protected void doPost(HttpServletRequest req, HttpServletResponse resp) {}
+    @Override
+    protected void service(HttpServletRequest req, HttpServletResponse resp) {
+        // 内部会根据请求方式分发到 doGet/doPost
+    }
+}
+
+```
+
+通常我们写业务 Servlet 的时候，都会继承 `HttpServlet`，而不是直接用 `GenericServlet`。
+
+### HttpServletRequest接口
+
+属于包 `javax.servlet.http.HttpServletRequest`
+
+`HttpServletRequest` **是 `ServletRequest` 的子接口**
+
+**作用**：代表一次 **HTTP 请求**，用于 **获取客户端（浏览器）发来的数据**
+
+**常用方法**：
+
+1. **获取请求参数**
+
+   ```java
+   String uname = request.getParameter("uname");
+   ```
+
+   （获取表单 / URL 里传过来的参数）
+
+2. **获取请求头信息**
+
+   ```java
+   String agent = request.getHeader("User-Agent");
+   ```
+
+3. **获取请求方式（GET/POST）**
+
+   ```java
+   String method = request.getMethod();
+   ```
+
+4. **获取请求的 URI/URL**
+
+   ```java
+   String uri = request.getRequestURI();
+   String url = request.getRequestURL().toString();
+   ```
+
+5. **获取客户端 IP 地址**
+
+   ```java
+   String ip = request.getRemoteAddr();
+   ```
+
+6. **获取 session 对象**
+
+   ```java
+   HttpSession session = request.getSession();
+   ```
+
+7. 设置request作用域属性
+
+   ```java
+   httpReq.setAttribute("age",18);
+   无返回值
+   ```
+
+8. 获取application属性，也称为Servlet上下文
+
+   ```java
+   ServletContext context = httpReq.getServletContext();
+   ```
+
+   
+
+### HttpServletResponse接口
+
+**作用**：代表一次 **HTTP 响应**，用于 **向客户端返回数据**。
+
+`HttpServletResponse` 是 `ServletResponse` 的 **子接口**，专门给 HTTP 协议用的，里面扩展了很多方法，比如：
+
+- `sendRedirect(String location)`
+- `addCookie(Cookie cookie)`
+- `setHeader(String name, String value)`
+
+**常用方法：**
+
+1. **设置响应内容类型**
+
+   ```java
+   response.setContentType("text/html;charset=UTF-8");
+   ```
+
+2. **获取输出流 / writer 输出内容**
+
+   ```java
+   PrintWriter out = response.getWriter();
+   out.println("<h1>Hello Servlet</h1>");
+   ```
+
+3. **设置响应头**
+
+   ```java
+   response.setHeader("Refresh", "3"); // 3秒后刷新
+   ```
+
+4. **重定向**
+
+   ```java
+   response.sendRedirect("login.html");
+   ```
+
+5. **下载文件**（设置响应头、输出流写文件数据）
+
+   ```java
+   response.setHeader("Content-Disposition", "attachment;filename=xxx.txt");
+   ```
+
+### ServletRequest接口
 
 **包名**：`javax.servlet`
 
@@ -108,40 +248,23 @@ getSession()
 
 ```
 
-### HttpSession接口
+setCharacterEncoding()
 
-**获取 Session 对象**
+```java
+作用：设置请求时编码
+    
+参数：String类型的UTF-8
+    
+返回值：无
+    
+示例：
 
-```ts
-这里的request是Service方法中的参数
-HttpSession session = request.getSession();
+req.setCharacterEncoding("utf-8")
 ```
 
-**常用方法**
-
-| 方法                                      | 作用                         |
-| ----------------------------------------- | ---------------------------- |
-| `setAttribute(String name, Object value)` | 设置会话属性                 |
-| `getAttribute(String name)`               | 获取会话属性                 |
-| `removeAttribute(String name)`            | 移除会话属性                 |
-| `getId()`                                 | 获取会话 ID（JSESSIONID）    |
-| `invalidate()`                            | 使 session 立即失效          |
-| `setMaxInactiveInterval(int interval)`    | 设置会话最大不活动时间（秒） |
-
-**生命周期**
-
-- 创建：第一次调用 `request.getSession()` 时。
-- 销毁：超过默认 30 分钟未使用 / 手动调用 `invalidate()`。
-
-### ServletResponse类
+### ServletResponse接口
 
 `ServletResponse` 是一个 **顶层接口**（通用的响应对象），它本身只定义了最基本的方法，比如：`getWriter()`、`getOutputStream()` 等。
-
-`HttpServletResponse` 是 `ServletResponse` 的 **子接口**，专门给 HTTP 协议用的，里面扩展了很多方法，比如：
-
-- `sendRedirect(String location)`
-- `addCookie(Cookie cookie)`
-- `setHeader(String name, String value)`
 
 **方法**
 
@@ -189,9 +312,124 @@ public void service(ServletRequest req, ServletResponse res)
  但我们在 Web 项目里用的几乎都是 HTTP 协议，所以需要手动向下转型。
 ```
 
+### HttpSession接口
 
+**获取 Session 对象**
 
-## 基本使用
+```ts
+这里的request是Service方法中的参数，是HttpServletRequest类型
+HttpSession session = request.getSession();
+```
+
+**常用方法**
+
+| 方法                                      | 作用                                  |
+| ----------------------------------------- | ------------------------------------- |
+| `setAttribute(String name, Object value)` | 设置会话属性，保存属性到Session对象中 |
+| `getAttribute(String name)`               | 获取会话属性，获取Session对象中的属性 |
+| `removeAttribute(String name)`            | 移除会话属性                          |
+| `getId()`                                 | 获取会话 ID（JSESSIONID）             |
+| `invalidate()`                            | 使 session 立即失效                   |
+| `setMaxInactiveInterval(int interval)`    | 设置会话最大不活动时间（秒）          |
+
+示例：
+
+```java
+// 强转为HttpServletRequest
+HttpServletRequest httpReq = (HttpServletRequest) req;
+HttpServletResponse httpRes = (HttpServletResponse) res;
+
+// 从请求中获取Session对象
+HttpSession session = httpReq.getSession();
+// 获取SessionID
+String id = session.getId();
+// 设置会话属性
+session.setAttribute("uname","aqua");
+// 获取Session对象
+Object uname = session.getAttribute("uname");
+System.out.println("uname = " + uname);
+// 重定向到另一个请求中
+httpRes.sendRedirect("marin");
+```
+
+**生命周期**
+
+- 创建：第一次调用 `request.getSession()` 时。
+- 销毁：超过默认 30 分钟未使用 / 手动调用 `invalidate()`。
+
+### ServletContext接口
+
+**包名**：`javax.servlet.ServletContext`
+
+**作用**：
+
+- `ServletContext` 代表 **整个 Web 应用的上下文对象**。
+- 它在 Web 应用启动时由 **Tomcat 容器创建**，整个项目中 **只有一个实例**。
+- 所有 Servlet 都可以通过 `ServletContext` 来 **共享数据、获取应用信息、操作资源**。
+
+**获取上下文对象**
+
+```java
+// 方式1：通过 Servlet 获取
+ServletContext context = this.getServletContext();
+
+// 方式2：通过 request 获取
+ServletContext context = request.getServletContext();
+
+// 方式3：通过 session 获取
+ServletContext context = session.getServletContext();
+
+```
+
+**常用方法**
+
+获取应用信息
+
+```java
+String path = context.getContextPath();  // 获取当前项目的上下文路径  eg: /myapp
+String realPath = context.getRealPath("/index.html"); // 获取服务器上某资源的真实路径
+String serverInfo = context.getServerInfo(); // 获取服务器信息 eg: Apache Tomcat/9.0
+```
+
+获取全局初始化参数（web.xml 里配置的）
+
+```java
+<context-param>
+    <param-name>encoding</param-name>
+    <param-value>UTF-8</param-value>
+</context-param>
+
+String encoding = context.getInitParameter("encoding");
+```
+
+全局共享数据
+
+```java
+// 存数据（全局有效）
+context.setAttribute("username", "Tom");
+
+// 取数据
+String user = (String) context.getAttribute("username");
+
+// 移除数据
+context.removeAttribute("username");
+
+```
+
+读取资源文件（常用于加载配置文件）
+
+```java
+InputStream in = context.getResourceAsStream("/WEB-INF/config.properties");
+Properties props = new Properties();
+props.load(in);
+
+```
+
+**生命周期**
+
+Web 应用启动 → Web 应用销毁
+
+## Servlet基本使用
 
 ### 方式一
 
@@ -399,6 +637,13 @@ Tomcat服务内部转发。客户端的URL地址没有发生改变。
 ```ts
 RequestDispatcher dispatcher = request.getRequestDispatcher("/targetServlet");
 dispatcher.forward(request, response);
+// 或
+if ("admin".equals(uname) && "123456".equals(pwd)) {
+    // 使用内部分发器内部转发
+    req.getRequestDispatcher("index.html").forward(req,res);
+} else {
+    out.println("<h1>登录失败，请检查用户名或密码</h1>");
+}
 ```
 
 **适用场景**：
@@ -419,7 +664,13 @@ dispatcher.forward(request, response);
 **实现方式**：
 
 ```ts
-response.sendRedirect("http://www.example.com");
+if ("admin".equals(uname) && "123456".equals(pwd)) {
+    // 强转为 HttpServletResponse类型，因为HttpServletResponse中有重定向的方法。
+    HttpServletResponse httpRes = (HttpServletResponse) res;
+    httpRes.sendRedirect("index.html");
+} else {
+    out.println("<h1>登录失败，请检查用户名或密码</h1>");
+}
 ```
 
 **适用场景**：
@@ -441,8 +692,6 @@ response.sendRedirect("http://www.example.com");
 
 服务端会在相应头把SessionID传给客户端，客户端接受到后把SessionID存放在Cookie中，客户端再次发送请求时，会在请求头中的Cookie字段中，携带SessionID。
 
-
-
 第一次请求（创建 Session）：客户端（浏览器）第一次访问服务器资源时：
 
 1. 服务器调用 `request.getSession()` → 创建一个新的 **HttpSession** 对象。
@@ -451,7 +700,19 @@ response.sendRedirect("http://www.example.com");
 4. 客户端浏览器收到响应后，会把这个 **Cookie（JSESSIONID）** 保存起来。
 
 ```java
+public class AquaServlet extends GenericServlet {
+    @Override
+    public void service(ServletRequest req, ServletResponse res) throws ServletException, IOException {
+        // 强转为HttpServletRequest
+        HttpServletRequest httpReq = (HttpServletRequest) req;
+        // 从请求中获取SessionID，如果获取不到则分配一个
+        HttpSession session = httpReq.getSession();
+        // 获取SessionID
+        String id = session.getId();
+        System.out.println("id = " + id); // 获取有ID D27E119F8D8F593411F1C30385F8A98D
 
+    }
+}
 ```
 
 后续请求（携带 SessionID）：客户端再次访问服务器时：
@@ -462,9 +723,7 @@ response.sendRedirect("http://www.example.com");
 
 3. 从而识别这是同一个用户的会话，取出之前保存的属性数据。
 
-```java
-
-```
+![image-20250916163654548](https://2216847528.oss-cn-beijing.aliyuncs.com/asset/image-20250916163654548.png)
 
 
 
@@ -547,18 +806,103 @@ Servlet 规范定义了 **四个属性域**（Attribute Scope）：
 作用域为session的案例：可以获取到Servlet作用域中的数据。
 
 ```java
+// aquaServlet
+@Override
+    public void service(ServletRequest req, ServletResponse res) throws ServletException, IOException {
+        // 强转为HttpServletRequest
+        HttpServletRequest httpReq = (HttpServletRequest) req;
+        HttpServletResponse httpRes = (HttpServletResponse) res;
 
+        // 从请求中获取Session对象
+        HttpSession session = httpReq.getSession();
+        // 获取SessionID
+        String id = session.getId();
+        // 设置会话属性
+        session.setAttribute("uname","aqua");
+        
+        // 重定向到另一个请求中
+        httpRes.sendRedirect("marin");
+    }
+```
+
+```java
+// marinServlet 伪代码
+@Override
+    public void service(ServletRequest req, ServletResponse res) throws ServletException, IOException {
+        // 强转为HttpServletRequest
+        HttpServletRequest httpReq = (HttpServletRequest) req;
+        HttpServletResponse httpRes = (HttpServletResponse) res;
+
+        // 获取Session对象
+        HttpSession session = httpReq.getSession();
+        Object uname = session.getAttribute("uname");
+        System.out.println("uname = " + uname);
+    }
 ```
 
 作用域为request的案例：可以获取到Servlet作用域中的数据。
 
 ```java
+// aquaServlet
+@Override
+    public void service(ServletRequest req, ServletResponse res) throws ServletException, IOException {
+        // 强转为HttpServletRequest
+        HttpServletRequest httpReq = (HttpServletRequest) req;
+        HttpServletResponse httpRes = (HttpServletResponse) res;
 
+        // 向request作用域中设置属性
+        httpReq.setAttribute("age",18);
+        // 内部转发到marin请求
+        RequestDispatcher marin = httpReq.getRequestDispatcher("marin");
+        marin.forward(req,res);
+    }
+```
+
+```java
+// marinServlet 伪代码
+@Override
+    public void service(ServletRequest req, ServletResponse res) throws ServletException, IOException {
+        // 强转为HttpServletRequest
+        HttpServletRequest httpReq = (HttpServletRequest) req;
+        HttpServletResponse httpRes = (HttpServletResponse) res;
+
+        // 获取request属性
+        Object age = httpReq.getAttribute("age");
+        System.out.println("age = " + age);
+    }
 ```
 
 作用域为application（所有人共用的）的案例：
 
 ```java
+// marinServlet 伪代码
+@Override
+    public void service(ServletRequest req, ServletResponse res) throws ServletException, IOException {
+        // 强转为HttpServletRequest
+        HttpServletRequest httpReq = (HttpServletRequest) req;
+        HttpServletResponse httpRes = (HttpServletResponse) res;
 
+        // 获取context属性
+        ServletContext context = httpReq.getServletContext();
+        Object uname = context.getAttribute("uname");
+        System.out.println("uname = " + uname);
+    }
+```
+
+```java
+// aquaServlet
+@Override
+    public void service(ServletRequest req, ServletResponse res) throws ServletException, IOException {
+        // 强转为HttpServletRequest
+        HttpServletRequest httpReq = (HttpServletRequest) req;
+        HttpServletResponse httpRes = (HttpServletResponse) res;
+
+        // 向request作用域中设置属性
+        ServletContext context = httpReq.getServletContext();
+        // 设置属性
+        context.setAttribute("uname","hanser Is My Angle");
+        // 重定向到 marin请求
+        httpRes.sendRedirect("marin");
+    }
 ```
 
