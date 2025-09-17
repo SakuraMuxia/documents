@@ -735,6 +735,8 @@ public class AquaServlet extends GenericServlet {
   - 浏览器禁用 Cookie（需要 URL 重写传递 `;jsessionid=xxx`）。
   - 浏览器关闭（会话 Cookie 丢失）。
 
+
+
 ## Cookie
 
 **概念**：小段文本信息，由服务器发送到客户端并保存。

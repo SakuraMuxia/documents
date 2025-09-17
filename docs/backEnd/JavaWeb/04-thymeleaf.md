@@ -112,6 +112,8 @@ Thymeleaf是一款用于渲染XML/XHTML/HTML5内容的模板引擎。类似JSP�
 
 说明：param-value中设置的前缀、后缀的值不是必须叫这个名字，可以根据实际情况和需求进行修改。
 
+### 模版页面位置
+
 > 为什么要放在WEB-INF目录下？
 >
 > 原因：WEB-INF目录不允许浏览器直接访问，所以我们的视图模板文件放在这个目录下，是一种保护。以免外界可以随意访问视图模板文件。
@@ -123,6 +125,17 @@ Thymeleaf是一款用于渲染XML/XHTML/HTML5内容的模板引擎。类似JSP�
 > 那放在WEB-INF目录下之后，重定向进不去怎么办？
 >
 > 重定向到Servlet，再通过Servlet转发到WEB-INF下。
+
+视图前缀和后缀
+
+![image-20250917104356955](000-images/04-thymeleaf/image-20250917104356955.png)
+
+当我们把Thymeleaf的视图模板文件统一存放在WEB-INF/pages目录下时，它们转发的路径就有规律了
+
+- 路径开头：都是/WEB-INF/pages/（正好是我们设置的viewPrefix），例如：/WEB-INF/pages/
+- 路径结尾：都是.html（正好是我们设置的viewSuffix）例如：.html
+- 物理视图：完整的转发路径，例如：/WEB-INF/pages/apple.html
+- 逻辑视图：去除前缀、后缀之后剩余的部分，例如：apple
 
 3、创建Servlet基类
 
@@ -198,57 +211,175 @@ public class ViewBaseServlet extends HttpServlet {
 }
 ```
 
-4、创建index.html文件
+3、两种基类（新）
 
 ```java
+package com.atguigu.demo.servlet.parent;  
+  
+import jakarta.servlet.ServletContext;  
+import jakarta.servlet.ServletException;  
+import jakarta.servlet.http.HttpServlet;  
+import jakarta.servlet.http.HttpServletRequest;  
+import jakarta.servlet.http.HttpServletResponse;  
+import org.thymeleaf.TemplateEngine;  
+import org.thymeleaf.context.WebContext;  
+import org.thymeleaf.templatemode.TemplateMode;  
+import org.thymeleaf.templateresolver.WebApplicationTemplateResolver;  
+import org.thymeleaf.web.IWebApplication;  
+import org.thymeleaf.web.servlet.IServletWebExchange;  
+import org.thymeleaf.web.servlet.JakartaServletWebApplication;  
+  
+import java.io.IOException;  
+import java.lang.reflect.Method;  
+  
+public class ServletParent extends HttpServlet {  
+  
+    private TemplateEngine templateEngine;  
+  
+    // view：视图  
+    // prefix：前缀  
+    private String viewPrefix = "/WEB-INF/pages/";
+    
+    // suffix：后缀  
+    private String viewSuffix = ".html";
+    
+    @Override  
+    public void init() throws ServletException {
 
+        // 1.获取ServletContext对象    
+		ServletContext servletContext = this.getServletContext();  
+
+        // 2.创建Thymeleaf解析器对象
+		IWebApplication webApplication = JakartaServletWebApplication.buildApplication(servletContext);  
+        WebApplicationTemplateResolver templateResolver = new WebApplicationTemplateResolver(webApplication);  
+  
+        // 3.给解析器对象设置参数    
+		// ①HTML是默认模式，明确设置是为了代码更容易理解    
+		templateResolver.setTemplateMode(TemplateMode.HTML);  
+		  
+		 // ②设置视图前缀    
+		templateResolver.setPrefix(viewPrefix);  
+		  
+		// ③设置视图后缀    
+		templateResolver.setSuffix(viewSuffix);  
+		  
+		// ④设置缓存过期时间（毫秒）    
+		templateResolver.setCacheTTLMs(60000L);  
+		  
+		// ⑤设置是否缓存    
+		templateResolver.setCacheable(true);  
+		  
+		// ⑥设置服务器端编码方式    
+		templateResolver.setCharacterEncoding("utf-8");  
+		  
+		// 4.创建模板引擎对象    
+		templateEngine = new TemplateEngine();  
+		  
+		// 5.给模板引擎对象设置模板解析器    
+		templateEngine.setTemplateResolver(templateResolver);  
+  
+    }  
+  
+    protected void processTemplate(String templateName, HttpServletRequest req, HttpServletResponse resp) throws IOException {  
+        // 1.设置响应体内容类型和字符集    
+resp.setContentType("text/html;charset=UTF-8");  
+  
+        // 2.创建WebContext对象    
+JakartaServletWebApplication jakartaServletWebApplication = JakartaServletWebApplication.buildApplication(getServletContext());  
+        IServletWebExchange webExchange = jakartaServletWebApplication.buildExchange(req, resp);  
+  
+        WebContext webContext = new WebContext(webExchange, req.getLocale(), jakartaServletWebApplication.getAttributeMap());  
+  
+        // 3.处理模板数据    
+templateEngine.process(templateName, webContext, resp.getWriter());  
+    }  
+  
+    @Override  
+    protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {  
+        doPost(req, resp);  
+    }  
+  
+    @Override  
+    protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {  
+        try {  
+            String requestURI = request.getRequestURI();  
+            if (requestURI.contains(";")) {  
+                requestURI = requestURI.substring(0, requestURI.indexOf(";"));  
+            }  
+            String[] split = requestURI.split("/");  
+            String methodName = split[split.length - 1];  
+            Method method = this.getClass().getDeclaredMethod(methodName, HttpServletRequest.class, HttpServletResponse.class);  
+            method.setAccessible(true);  
+            method.invoke(this, request, response);  
+        } catch (Throwable e) {  
+            e.printStackTrace();  
+            throw new RuntimeException(e);  
+        }  
+    }  
+  
+}
+```
+
+4、创建page1.html文件
+
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+</head>
+<body>
+    <h3>Hello yuluo,have fun,good day for you!</h3>
+</body>
+</html>
 ```
 
 5、创建Servlet
 
 ```ts
+<!--配置first Servlet-->
 <servlet>
-    <servlet-name>testThymeleafServlet</servlet-name>
-    <servlet-class>com.atguigu.servlet.TestThymeleafServlet</servlet-class>
+    <servlet-name>firstServlet</servlet-name>
+    <servlet-class>com.fruit.yuluo.servlet.firstServlet.firstServlet</servlet-class>
 </servlet>
 <servlet-mapping>
-    <servlet-name>testThymeleafServlet</servlet-name>
-    <url-pattern>/testThymeleaf</url-pattern>
+    <servlet-name>firstServlet</servlet-name>
+    <url-pattern>/firstReq</url-pattern>
 </servlet-mapping>
 ```
 
 自定义Servlet让其继承ViewBaseServlet
 
 ```java
+package com.fruit.yuluo.servlet.firstServlet;
 
-```
+import com.fruit.yuluo.servlet.ViewBaseServlet;
 
-在doPost()方法中跳转到Thymeleaf页面
+import javax.servlet.ServletException;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+import java.io.IOException;
 
-```
+public class firstServlet extends ViewBaseServlet {
 
-```
-
-6、创建Thymeleaf页面
-
-```html
-<!DOCTYPE html>
-<html lang="en" xmlns:th="http://www.thymeleaf.org">
-    <head>
-        <meta charset="UTF-8">
-        <title>目标页面</title>
-    </head>
-    <body>
-        <h1 th:text="${username}">这里要显示一个动态的username</h1>
-    </body>
-</html>
+    // 重写 HttpServlet 方法
+    @Override
+    protected void service(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
+        // 之前渲染方式：request.getRequestDispatcher("index.html").forward(request,response);
+        // 现在使用 thymeleaf 渲染：super.processTemplate("逻辑视图名称",request,response);
+        // 物理视图名称  =  视图前缀 + 逻辑视图名称 + 视图后缀
+        // /page01.html=   /          page01        .html
+        super.processTemplate("page1",req,resp);
+    }
+}
 ```
 
 ## 基本语法
 
 ### th名称空间
 
-![image-20250915111014385](https://2216847528.oss-cn-beijing.aliyuncs.com/asset/image-20250915111014385.png)
+
 
 ### 循环遍历
 
@@ -265,19 +396,19 @@ public class ViewBaseServlet extends HttpServlet {
 
 
 
-### 表达式语法
+### th:*语法
 
-**表达式**
+> ${} 是thymeleaf的语法，表示thymeleaf表达式，里边写 thymeleaf 表达式
 
-```java
-${} 这是thymeleaf的语法，表示thymeleaf表达式
-里边写 thymeleaf 表达式
-```
-
-**修改标签文本值**
+**普通字符串**
 
 ```html
 <p th:text="标签体新值">标签体原始值</p>
+
+<p th:text="'Hello World'"></p>
+<!--外层 ' ' 包裹普通字符串 -->
+<!--渲染后：-->
+<p>Hello World</p>
 ```
 
 th:text作用
@@ -285,22 +416,17 @@ th:text作用
 - 不经过服务器解析，直接用浏览器打开HTML文件，看到的是标签体原始值
 - 经过服务器解析，Thymeleaf引擎根据th:text属性指定的标签体新值去替换标签体原始值
 
-**字面量和变量**
+**变量（对象属性）**
 
-字面量是一个经常会遇到的概念，我们可以对照变量来理解它的含义。
+```html
+<!--${fruit.name} 是表达式-->
+<!--Thymeleaf 会解析为对象的属性值（可以是数字、布尔、字符串等）-->
+<!--渲染后会自动转换成字符串显示在 HTML 中-->
 
-```ts
-// a是变量，100是字面量
-int a = 100;
-System.out.println("a = " + a);
+<p th:text="${fruit.name}"></p>
 ```
 
-- 变量：变量名字符串本身不是它的值，它指向的才是它的值
-- 字面量：它就是字面上的含义，我们从字面上看到的直接就是它的值
-
-现在我们在th:text属性中使用的就是字面量，它不指代任何其他值。
-
-**修改指定属性值**
+**修改属性值**
 
 ```html
 <input type="text" name="username" th:value="文本框新值" value="文本框旧值" />
@@ -308,27 +434,46 @@ System.out.println("a = " + a);
 
 语法：任何HTML标签原有的属性，前面加上th:就都可以通过Thymeleaf来设定新值。
 
-**解析URL地址**
+**表达式拼接 / 计算**
 
 ```html
-<!--使用Thymeleaf解析url地址-->
-
-<a th:href="@{/index.html}">访问index.html</a>
+<!--字符串 + 表达式 → 最终渲染为完整字符串-->
+<p th:text="'水果名称：' + ${fruit.name} + ', 价格：' + ${fruit.price}"></p>
+<!--渲染后：-->
+<p>水果名称：苹果, 价格：10</p>
 ```
 
-经过解析后得到：
+**布尔值 / 条件判断**
 
-> /webday08/index.html
+```html
+<!--这里 th:if / th:unless 接收的是 布尔表达式，不是字符串-->
+<!--用于控制标签是否渲染-->
+<p th:if="${fruit.count > 0}">有库存</p>
+<p th:unless="${fruit.count > 0}">缺货</p>
+```
 
-所以@{}的作用是在字符串前附加上下文路径
+**URL / 属性绑定**
+
+```html
+<!--th:href / th:onclick 最终需要生成字符串，但可以 通过表达式拼接生成-->
+<!--拼接中可以包含数字、对象属性等-->
+<a th:href="@{/fruit/delete(id=${fruit.id})}">删除</a>
+<button th:onclick="'delFruit(' + ${fruit.id} + ')'">删除</button>
+
+<!--如果有多个参数-->
+<!--=号两边不能有空格-->
+<a th:href="@{/fruit/delete(id=${fruit.id}, name=${fruit.name})}" onclick="return confirm('确定要删除这个水果吗？');">删除</a>
+```
+
+@{}的作用是在字符串前附加上下文路径
 
 > 这个语法的好处是：实际开发过程中，项目在不同环境部署时，Web应用的名字有可能发生变化。所以上下文路径不能写死。而通过@{}动态获取上下文路径后，不管怎么变都不怕啦！
 
 **首页使用URL地址解析**
 
-![image-20250915111424737](https://2216847528.oss-cn-beijing.aliyuncs.com/asset/image-20250915111424737.png)
-
 如果我们直接访问index.html本身，那么index.html是不需要通过Servlet，当然也不经过模板引擎，所以index.html上的Thymeleaf的任何表达式都不会被解析。
+
+![image-20250915111424737](https://2216847528.oss-cn-beijing.aliyuncs.com/asset/image-20250915111424737.png)
 
 解决办法：通过Servlet访问index.html，这样就可以让模板引擎渲染页面了：
 
@@ -338,17 +483,11 @@ System.out.println("a = " + a);
 >
 > 通过上面的例子我们看到，所有和业务功能相关的请求都能够确保它们通过Servlet来处理，这样就方便我们统一对这些请求进行特定规则的限定。
 
-**给URL地址后面附加请求参数**
-
-参照官方文档说明
-
-![image-20250915111540773](https://2216847528.oss-cn-beijing.aliyuncs.com/asset/image-20250915111540773.png)
-
-**th:object**
+**统一绑定对象**
 
 ```html
-th:object="${fruit}" 表示当前表单中所有的属性，都来自这个对象
-*{属性名} 表示引用上面的fruit对象fname的属性
+<!--th:object="${fruit}" 表示当前表单中所有的属性，都来自这个对象-->
+<!--*{属性名} 表示引用上面的fruit对象上的属性-->
 <table th:object=${fruit}>
     <tr>
     	<td th:value="*{fname}"></td>
@@ -356,11 +495,34 @@ th:object="${fruit}" 表示当前表单中所有的属性，都来自这个对�
         <td th:value="*{count}"></td>
     </tr>
 </table>
+
+<!--指定表单绑定的对象为 fruit-->
+<!--表单内部所有 th:field 都以 fruit 为基础对象-->
+<!--th:field="*{属性名}"-->
+<!--*{name} → 等价于 ${fruit.name}-->
+<!--Thymeleaf 会自动生成对应的 name 属性-->
+<!--提交表单时，后端就能直接接收到 fruit.name、fruit.price 等属性-->
+<form th:action="@{/fruit/save}" th:object="${fruit}" method="post">
+    <div>
+        <label>名称：</label>
+        <input type="text" th:field="*{name}" />
+    </div>
+    <div>
+        <label>价格：</label>
+        <input type="number" th:field="*{price}" />
+    </div>
+    <div>
+        <label>库存：</label>
+        <input type="number" th:field="*{count}" />
+    </div>
+    <button type="submit">提交</button>
+</form>
+
 ```
 
+### 操作域对象
 
-
-### 域对象使用
+**域对象使用**
 
 域对象是在服务器中有一定作用域范围的对象，在这个范围内的所有动态资源都能够共享域对象中保存的数据。
 
@@ -373,8 +535,6 @@ th:object="${fruit}" 表示当前表单中所有的属性，都来自这个对�
 **会话域**：会话域的范围是一次会话
 
 **应用域**：应用域的范围是整个项目全局
-
-### 操作域对象
 
 我们通常的做法是，在Servlet中将数据存储到域对象中，而在使用了Thymeleaf的前端页面中取出域对象中的数据并展示。
 
@@ -392,6 +552,7 @@ request.setAttribute(requestAttrName, requestAttrValue);
 Thymeleaf表达式：
 
 ```html
+<!-- 可以省略 request ，直接写请求域中的属性-->
 <p th:text="${helloRequestAttr}">request field value</p>
 ```
 
@@ -435,7 +596,7 @@ Thymeleaf表达式：
 
  **获取请求参数的语法**
 
-```java
+```ts
 ${param.参数名}
 ```
 
@@ -529,36 +690,30 @@ OGNL：Object-Graph Navigation Language对象-图 导航语言，实际上调用
 **起点**
 
 - 访问属性域的起点
-  
-  请求域属性名
-  
-  session
-  
-  application
+  - 请求域属性名
+  - session
+  - application
+
 - param
 - 内置对象
-  
-  request
-  
-  session
-  
-  lists
-  
-  strings
+  - request
+  - session
+  - lists
+  - strings
+
 
 **属性访问语法**
 
 - 访问对象属性：使用getXxx()、setXxx()方法定义的属性
+  - 对象.属性名
   
-  对象.属性名
 - 访问List集合或数组
-  
-  集合或数组[下标]
+  - 集合或数组[下标]
+
 - 访问Map集合
-  
-  Map集合.key
-  
-  Map集合['key']
+  - Map集合.key
+  - Map集合['key']
+
 
 ### 分支与迭代
 
@@ -757,8 +912,8 @@ if配合not关键词和unless配合原表达式效果是一样的，看自己的
 ```xml
 <!--视图前缀-->
 <context-param>
-    <param-name>view-prefiex</param-name>
-    <param-value>/</param-value>
+    <param-name>view-prefix</param-name>
+    <param-value>/WEB-INF/pages/</param-value>
 </context-param>
 <!--视图后缀-->
 <context-param>
@@ -770,16 +925,16 @@ if配合not关键词和unless配合原表达式效果是一样的，看自己的
 4、在src目录下复制一个Servlet：ViewBaseServlet，模拟 Spring MVC 的 `InternalResourceViewResolver` 功能，统一管理页面跳转和渲染：
 
 ```java
-package com.fruit.servlet;
+package com.fruit.yuluo.servlet;
 
 import org.thymeleaf.TemplateEngine;
 import org.thymeleaf.context.WebContext;
 import org.thymeleaf.templateresolver.ServletContextTemplateResolver;
 
+import javax.servlet.ServletException;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
-import javax.servlet.ServletException;
 import java.io.IOException;
 
 public class ViewBaseServlet extends HttpServlet {
@@ -798,17 +953,18 @@ public class ViewBaseServlet extends HttpServlet {
         templateEngine = new TemplateEngine();
         templateEngine.setTemplateResolver(resolver);
     }
-
+    // 渲染模版
     protected void processTemplate(String templateName,
                                    HttpServletRequest req,
                                    HttpServletResponse resp) throws IOException {
+        // 设置响应类型为 HTML，字符集 UTF-8
         resp.setContentType("text/html;charset=UTF-8");
-
+        // 构建 Thymeleaf 的上下文对象（包含 request、response、servletContext 等）
         WebContext webContext = new WebContext(req, resp, getServletContext());
+        // 调用 Thymeleaf 的模板引擎，把指定模板渲染为 HTML 并写入响应流
         templateEngine.process(templateName, webContext, resp.getWriter());
     }
 }
-
 ```
 
 > 这个Servlet继承自HttpServlet，他重写了init方法，service方法。
@@ -818,49 +974,416 @@ public class ViewBaseServlet extends HttpServlet {
 5、编写一个自定义的Servlet，继承自ViewBaseServlet。继承 `ViewBaseServlet`，使用 `processTemplate()` 渲染页面：
 
 ```java
-// 使用内部转发功能
+package com.fruit.yuluo.servlet.firstServlet;
+
+import com.fruit.yuluo.servlet.ViewBaseServlet;
+
+import javax.servlet.ServletException;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+import java.io.IOException;
+
+public class firstServlet extends ViewBaseServlet {
+
+    // 重写 HttpServlet 方法
+    @Override
+    protected void service(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
+        // 之前渲染方式：request.getRequestDispatcher("index.html").forward(request,response);
+        // 现在使用 thymeleaf 渲染：super.processTemplate("逻辑视图名称",request,response);
+        // 物理视图名称  =  视图前缀 + 逻辑视图名称 + 视图后缀
+        // /page01.html=   /          page01        .html
+        super.processTemplate("page1",req,resp);
+    }
+}
+
 ```
 
 总结：**基本使用步骤**：引入依赖 → 配置前后缀 → 写 `ViewBaseServlet` → 写业务 Servlet → 写页面模板。
 
+## 封装Jar包
 
+把自己常用的工具类、基类（比如你刚写的 `ViewBaseServlet`）封装成 **Jar 包**。
+
+**使用命令打包方式**
+
+1、准备项目结构
+
+2、编译生成 `.class` 文件
+
+如果不是 Maven 项目，可以直接用 `javac` 编译
+
+```java
+javac -d out src/main/java/com/fruit/utils/*.java
+```
+
+这样会在 `out` 文件夹下生成对应的 `.class` 文件。
+
+3、打包成 Jar
+
+用 `jar` 命令
+
+```java
+jar cvf my-utils.jar -C out .
+```
+
+这会在当前目录生成一个 `my-utils.jar`，里面包含所有编译好的 `.class`
+
+4、在别的项目中使用
+
+把 `my-utils.jar` 放到项目的 `lib/` 目录，然后在编译/运行时加上 classpath
+
+```java
+javac -cp lib/my-utils.jar Main.java
+java -cp .;lib/my-utils.jar Main
+```
+
+**使用Idea打包方式**
+
+1、随意选中一个项目文件，选择 structure，新增制品Artifacts，添加jar，选中空jar包。
+
+![image-20250917113436313](https://2216847528.oss-cn-beijing.aliyuncs.com/asset/image-20250917113436313.png)
+
+2、配置jar包名称，配置名称，配置目录结构
+
+![image-20250917114208424](https://2216847528.oss-cn-beijing.aliyuncs.com/asset/image-20250917114208424.png)
+
+3、编译你写的java类文件，选中你编写的类，然后编译这个文件，这些文件会在这个项目的out文件中找到。
+
+![image-20250917114317524](https://2216847528.oss-cn-beijing.aliyuncs.com/asset/image-20250917114317524.png)
+
+4、把编译好的类class文件，添加到Artifacts jar包制品中对应的目录中
+
+![image-20250917114557083](https://2216847528.oss-cn-beijing.aliyuncs.com/asset/image-20250917114557083.png)
+
+![image-20250917114857294](https://2216847528.oss-cn-beijing.aliyuncs.com/asset/image-20250917114857294.png)
+
+
+
+5、添加完毕后，选中Build，Build Artifacts，选择你创建的Jar包的Artifacts
+
+![image-20250917114913229](https://2216847528.oss-cn-beijing.aliyuncs.com/asset/image-20250917114913229.png)
+
+6、Build完成后，会在这个项目的out目录中，找到artifacts目录，找到对应名称的制品，这个jar包就是打包好的
+
+![image-20250917115052668](https://2216847528.oss-cn-beijing.aliyuncs.com/asset/image-20250917115052668.png)
+
+7、把这个Jar包导入别的项目中，添加到library中，就可以使用
 
 ## 水果案例
 
-1、封装一个jar包：包含Dao，DaoUtils，ViewBaseServlet类。
+1、定义一个FruitDao接口和实现类
 
 ```java
-把这些类的文件夹放在同一个文件夹 module1 下；
-选中这个文件夹上项目根目录；
-选中Artifacts选项，点击+号，点击Jar包，选择Empty,
-然后添加directory，目录结构如同，这些类的存放结构。
-设置Jar包的名字。
-设置这个项目的依赖，thymeleaf依赖和tomcat依赖。
-编译 module 文件夹，选中文件夹，然后点击build。
-在Project Structure配置页面中，继续添加 File，选择File文件，File文件是对应Dao，Daoutil，ViewBaseServlet类中对应编译后的Out目录下的Class文件。
-把这些目录结构中存放对应类的地方，存放编译后out目录下的class类。
-点击OK，然后选中Build，Build Artifacts，选择刚刚创建的Artifact，点击Build。
-这时就多了一个Jar包，把这个Jar包，新建一个目录，放在里边，并把这个文件夹设置为library。
+package com.fruit.yuluo.dao;
+import com.fruit.yuluo.pojo.Fruit;
+
+import java.util.List;
+
+public interface FruitDao {
+    // 获取所有的库存记录
+    List<Fruit> getFruitList();
+
+    // 添加新库存
+    void addFruit(Fruit fruit);
+
+    // 删除指定的库存记录
+    void delFruit(Integer id);
+
+    // 获取指定的库存记录
+    Fruit getFruit(Integer id);
+    Fruit getFruit(String name);
+
+    // 修改库存记录
+    void updateFruit(Fruit fruit);
+}
 
 ```
 
-2、在module文件中添加刚刚封装的依赖，进入Structure页面，点击Module，点击Dependent依赖选项卡，点击+号，把封装的Jar包添加进去。同时 Fix Artifact war 打包时的依赖问题。
-
-3、定义一个FruitDao接口
-
-4、定义pojo Fruit实体类
-
-5、定义FruitDao的实现类
-
 ```java
+package com.fruit.yuluo.dao.impl;
+
+import com.fruit.yuluo.dao.BaseDao;
+import com.fruit.yuluo.dao.FruitDao;
+import com.fruit.yuluo.pojo.Fruit;
+
+import java.util.List;
+
+public class FruitDaoImpl extends BaseDao<Fruit> implements FruitDao {
+    @Override
+    public List<Fruit> getFruitList() {
+        String sql = "select * from goods";
+        List<Fruit> fruits = this.executeQuery(sql, null);
+        return fruits;
+    }
+
+    @Override
+    public void addFruit(Fruit fruit) {
+        String sql = "insert into goods values(0,?,?,?,?)";
+        int resRow = this.executeUpdate(sql, fruit.getFname(), fruit.getPrice(), fruit.getCount(), fruit.getRemark());
+        // 打印受影响行数
+        System.out.println("resRow = " + resRow);
+    }
+
+    @Override
+    public void delFruit(Integer id) {
+        String sql = "delete from goods where id = ?";
+        int resRow = this.executeUpdate(sql, id);
+        System.out.println("resRow = " + resRow);
+    }
+
+    @Override
+    public Fruit getFruit(Integer id) {
+        return null;
+    }
+
+    @Override
+    public Fruit getFruit(String name) {
+        return null;
+    }
+
+    @Override
+    public void updateFruit(Fruit fruit) {
+
+    }
+}
 
 ```
 
-6、自定义Servlet
+2、定义pojo Fruit实体类
 
 ```java
+package com.fruit.yuluo.pojo;
+
+import java.math.BigDecimal;
+
+public class Fruit {
+    // 私有属性
+    private Integer id;
+    private String fname;
+    private BigDecimal price; // 用 BigDecimal 存金额
+    private Integer count;
+    private String remark;
+
+    public Fruit() {
+    }
+
+    public Fruit(Integer id, String fname, BigDecimal price, Integer count, String remark) {
+        this.id = id;
+        this.fname = fname;
+        this.price = price;
+        this.count = count;
+        this.remark = remark;
+    }
+
+    public Integer getId() {
+        return id;
+    }
+
+    public void setId(Integer id) {
+        this.id = id;
+    }
+
+    public String getFname() {
+        return fname;
+    }
+
+    public void setFname(String fname) {
+        this.fname = fname;
+    }
+
+    public BigDecimal getPrice() {
+        return price;
+    }
+
+    public void setPrice(BigDecimal price) {
+        this.price = price;
+    }
+
+    public Integer getCount() {
+        return count;
+    }
+
+    public void setCount(Integer fcount) {
+        this.count = fcount;
+    }
+
+    public String getRemark() {
+        return remark;
+    }
+
+    public void setRemark(String remark) {
+        this.remark = remark;
+    }
+
+    @Override
+    public String toString() {
+        return "Fruit{" +
+                "id=" + id +
+                ", fname='" + fname + '\'' +
+                ", price=" + price +
+                ", count=" + count +
+                ", remark='" + remark + '\'' +
+                '}';
+    }
+}
 
 ```
+
+4、创建水果模版页面
+
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+</head>
+<body>
+  <header>
+    <h1>欢迎来到水果列表页面</h1>
+  </header>
+</body>
+</html>
+```
+
+5、定义首页Servlet
+
+```java
+package com.fruit.yuluo.servlet.fruitServlet;
+
+import com.fruit.yuluo.dao.FruitDao;
+import com.fruit.yuluo.dao.impl.FruitDaoImpl;
+import com.fruit.yuluo.pojo.Fruit;
+import com.fruit.yuluo.servlet.ViewBaseServlet;
+
+import javax.servlet.ServletException;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+import javax.servlet.http.HttpSession;
+import java.io.IOException;
+import java.util.List;
+
+public class fruitServlet extends ViewBaseServlet {
+    @Override
+    protected void service(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
+        // 创建dao实例
+        FruitDao fruitDao = new FruitDaoImpl();
+        // 调用查询方法
+        List<Fruit> fruitList = fruitDao.getFruitList();
+        // 保存到session中
+        HttpSession session = req.getSession();
+        // 设置属性
+        session.setAttribute("fruitList",fruitList);
+        // 使用thymeleaf渲染
+        super.processTemplate("fruitList",req,resp);
+
+    }
+}
+
+```
+
+6、配置web.xml
+
+```xml
+<!--配置水果servlet-->
+    <servlet>
+        <servlet-name>fruitList</servlet-name>
+        <servlet-class>com.fruit.yuluo.servlet.fruitServlet.fruitServlet</servlet-class>
+    </servlet>
+    <servlet-mapping>
+        <servlet-name>fruitList</servlet-name>
+        <url-pattern>/fruitList</url-pattern>
+    </servlet-mapping>
+```
+
+### 增删改查
+
+**查询列表**
+
+查询页面模版
+
+```html
+<!DOCTYPE html>
+<!--添加这行可以在编辑器中提示语法-->
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>水果库存管理系统</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+</head>
+<body class="bg-light">
+    <!-- 页面标题 -->
+    <h2 class="text-center mb-4">水果列表</h2>
+    <!-- 水果列表 -->
+    <!-- 水果列表表格 -->
+    <div class="container py-4 d-flex justify-content-center">
+        <div class="card shadow-sm" style="width: 60%; background-color: #f5f7fa;">
+            <div class="card-header bg-success text-white">水果清单</div>
+            <div class="card-body p-0">
+                <table class="table table-striped table-hover align-middle mb-0">
+                    <thead class="table-dark">
+                    <tr>
+                        <th>编号</th>
+                        <th>名称</th>
+                        <th>价格</th>
+                        <th>库存</th>
+                        <th>操作</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+<!-- 遍历水果列表 这里默认使用请求域中数据 -->
+<!--
+    th:each 表示准备迭代
+    ${} 这是thymeleaf的语法，表示thymeleaf表达式
+    session.key 相当于  session.getAttribute(key)
+    :  冒号相当于增强for循环中的冒号  , fruit是临时变量
+-->
+<!--
+    th:if  表示分支判断   对应的有 th:unless
+    #lists 是一个公共的内置对象（工具类）
+-->
+<!--
+     ${fruit.price}
+     这里的.属性名  是一种语法，称之为OGNL语法 。 实际上是调用这个对象的属性的getter方法
+     OGNL: Object Graphic Navigation Language   对象图导航语言
+-->
+<tr th:if="${not #lists.isEmpty(session.fruitList)}" th:each="fruit : ${session.fruitList}">
+    <td th:text="${fruit.id}"></td>
+    <td th:text="${fruit.fname}"></td>
+    <td th:text="${fruit.price}"></td>
+    <td th:text="${fruit.count}"></td>
+    <td>
+        <!-- 删除按钮 -->
+        <a th:href="@{/fruit/delete(id=${fruit.id})}"
+           class="btn btn-danger btn-sm"
+           onclick="return confirm('确定要删除这个水果吗？');">删除</a>
+    </td>
+</tr>
+<!--空数据展示-->
+<tr th:unless="${not #lists.isEmpty(session.fruitList)}">
+    <td colspan="5">对不起，库存为空！</td>
+</tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</body>
+<script>
+
+</script>
+</html>
+```
+
+删除（单个）
+
+```html
+
+```
+
+
 
 ## 各自作用
 

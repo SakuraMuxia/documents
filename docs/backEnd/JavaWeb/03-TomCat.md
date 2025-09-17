@@ -161,6 +161,10 @@ localhost:8080/xxx
 http://localhost:8080/fruit/index.html
 ```
 
+2、配置Tomcat的jre目录
+
+![image-20250917111459655](https://2216847528.oss-cn-beijing.aliyuncs.com/asset/image-20250917111459655.png)
+
 3、启动Tomcat，使用debug模式（run模式）。
 
 4、如果出现多个 部署包，则可以通过 project structure，来进行删除多余的，部署包。
@@ -170,6 +174,32 @@ http://localhost:8080/fruit/index.html
 ![image-20250905112937580](https://2216847528.oss-cn-beijing.aliyuncs.com/asset/image-20250905112937580.png)
 
 ​	4.2、找到 Artifacts 选项卡，就可以删除。然后点击 + 号，选择 WebApplication:Exploded，选择 From Module。选择对应的 java-web 项目（有的是Java项目，有的是Web项目，有的是JavaWeb项目）
+
+## Tomcat依赖包
+
+Tomcat依赖包 servlet-api.jar 和 tomcat-api.jar 包路径找不到报错
+
+选中当前项目，然后点击File，选中Project Structure，
+
+![image-20250917102038328](000-images/03-TomCat/image-20250917102038328.png)
+
+双击Tomcat，重新选中，以上两个包（位置在tomcat安装目录的lib文件夹下），然后应用即可。
+
+## Idea更改web项目2
+
+点击 项目structure，然后点击 Facets，选择Web，选择module，然后就会重新生成Artifacts制品
+
+![image-20250917110105423](https://2216847528.oss-cn-beijing.aliyuncs.com/asset/image-20250917110105423.png)
+
+配置好之后，查看制品Artifacts，如下，
+
+![image-20250917113501524](https://2216847528.oss-cn-beijing.aliyuncs.com/asset/image-20250917113501524.png)
+
+然后在Tomcat Configuration中配置部署Artifacts中的Web文件夹
+
+![image-20250917113611892](https://2216847528.oss-cn-beijing.aliyuncs.com/asset/image-20250917113611892.png)
+
+
 
 ## Tomcat作用
 
