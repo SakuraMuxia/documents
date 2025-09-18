@@ -286,15 +286,42 @@ doc/**/*.pdf
 
 ### 忽略已经提交到版本库的文件
 
+**方式1：**
+
 对于已经加入到版本库的文件，可以在版本库中删除该文件
 
 ```bash
+// 检查某个文件是否被缓存
+git ls-files --cached | grep 文件名
+
 git rm --cached 文件名
 ```
 
 然后在 `.gitignore` 中配置忽略。
 
 最后执行 `git add` 和 `git commit` 提交即可。
+
+```ts
+// 批量
+git rm -r --cached .
+git add .
+
+git commit -m "移除已跟踪文件并更新 .gitignore"
+
+以后这个文件就不会再被提交了
+```
+
+这会让 **远程仓库里的对应文件被删除**，别人拉取代码时文件会消失
+
+**方式2：**
+
+如果你希望 **本地保留、远程也保留，但以后不再跟踪更新**，可以用
+
+```ts
+git update-index --assume-unchanged config.properties
+
+这样文件仍在仓库中，但 Git 假装它不会变。
+```
 
 
 

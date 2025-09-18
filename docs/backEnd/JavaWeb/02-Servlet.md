@@ -99,6 +99,14 @@ public abstract class HttpServlet extends GenericServlet {
 
    ```java
    String uname = request.getParameter("uname");
+   // 获取post请求中的参数同样也是如此
+   String fname = req.getParameter("fname");
+   String price = req.getParameter("price");
+   // 转为大数
+   BigDecimal bigPrice = new BigDecimal(price.trim());
+   Integer count = Integer.parseInt(req.getParameter("count"));
+   String remark = req.getParameter("remark");
+   Integer id = Integer.parseInt(req.getParameter("id"));
    ```
 
    （获取表单 / URL 里传过来的参数）
@@ -145,6 +153,13 @@ public abstract class HttpServlet extends GenericServlet {
 
    ```java
    ServletContext context = httpReq.getServletContext();
+   ```
+
+9. 设置请求的编码格式
+
+   ```java
+   // 设置请求的编码，防止乱码
+   req.setCharacterEncoding("utf-8");
    ```
 
    

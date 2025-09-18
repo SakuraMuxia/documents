@@ -1071,6 +1071,370 @@ java -cp .;lib/my-utils.jar Main
 
 ## 水果案例
 
+0、封装baseDao类
+
+```java
+package com.fruit.yuluo.dao;
+
+import com.fruit.yuluo.utils.ClassUtil;
+import com.fruit.yuluo.utils.DButil;
+
+import java.lang.reflect.ParameterizedType;
+import java.lang.reflect.Type;
+import java.sql.*;
+import java.util.ArrayList;
+import java.util.List;
+
+// 定义BaseDao为一个抽象类
+public abstract class BaseDao<T> {
+    // 定义泛型的名称
+    private String entityClassName;
+    // 定义ResultSet结果集
+    private ResultSet rs;
+    // 连接池对象
+    Connection connection = null;
+    // sql语句对象
+    PreparedStatement pstm = null;
+
+    // 在无参构造中，获取泛型类型，子类调用构造，默认调用父类的无参构造
+    public BaseDao(){
+        // 调用
+        getEntityClassName();
+
+    }
+    // 获取子类实例给父类泛型T传入的名称
+    private void getEntityClassName(){
+        // 通过子类实例对象，获取父类（自己）的泛型T的实际名称
+        // 此处的this代表的是FruitDaoImpl实例，而不是BaseDao
+        // this.getClass()得到的就是FruitDaoImpl的Class对象
+        // getGenericSuperclass() 获取带有泛型的父类,因此可以获取到 BaseDao<Fruit>
+        // 因为我们是这样定义的：class FruitDaoImpl extends BaseDao<Fruit>，所以泛型父类是： BaseDao<Fruit>
+        Type genericSuperclass = this.getClass().getGenericSuperclass();
+        // 把父类的泛型信息，从通用的 Type 强转为 ParameterizedType，以便后续获取实际的泛型参数。
+        // 强转为ParameterizedType类型
+        ParameterizedType parameterizedType = (ParameterizedType) genericSuperclass;
+        // getActualTypeArguments 获取实际的类型参数
+        Type[] actualTypeArguments = parameterizedType.getActualTypeArguments();
+        // 因为当前BaseDao<T>后面只有一个泛型位置，所以此处我们使用的是[0]
+        // getTypeName() 获取类型名称
+        // getTypeName() 返回完整类名，例如 "com.xxx.pojo.Fruit"
+        String typeName = actualTypeArguments[0].getTypeName();
+        entityClassName = typeName;
+    }
+
+    // 定义设置参数的方法
+    private void setParams(PreparedStatement psmt , Object... params) throws SQLException {
+        if(params!=null && params.length>0){
+            for (int i = 0; i < params.length; i++) {
+                psmt.setObject(i+1,params[i]);
+            }
+        }
+    }
+
+    // 执行增删改的操作
+    protected int executeUpdate(String sql,Object ...params){
+        // 去除空格，并转为小写
+        sql = sql.trim().toUpperCase();
+        // 设置标记是否是插入语句
+        boolean insertFlag = sql.startsWith("INSERT INTO");
+        // 获取连接对象
+        connection = DButil.getConnection();
+
+        try {
+            // 判断是否是插入语句
+            if (insertFlag){
+                // 获取sql执行语句对象,插入语句
+                pstm = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS);
+            }else{ // 非插入语句
+                pstm = connection.prepareStatement(sql);
+            }
+            // 给sql语句传入参数
+            setParams(pstm,params);
+            // 执行sql
+            int resRow = pstm.executeUpdate();
+            // 返回
+            if(insertFlag) { // 如果是插入语句
+                // 获取自增id
+                rs = pstm.getGeneratedKeys();
+                // 如果返回有值
+                if(rs.next()){
+                    // 获取第一列数据
+                    return (rs.getInt(1));
+                }
+            }else{
+                return resRow; // 返回默认受影响行数
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        } finally {
+            // 关闭连接
+            DButil.close(connection,pstm,rs);
+        }
+        return 0;
+    }
+
+    // 查询列表的方法
+    protected List<T> executeQuery(String sql,Object ...params){
+        List<T> list = new ArrayList<>();
+        connection = DButil.getConnection();
+        try {
+            // 获取statement对象
+             pstm = connection.prepareStatement(sql);
+             // 设置SQL参数
+            setParams(pstm,params);
+            // 执行SQL
+            rs = pstm.executeQuery();
+            // 方式1：通过反射来处理
+            // 方式2：通过数据解析器来处理（见JDBC章节）
+            // 获取结果集的元数据，也就是每一行的数据
+            ResultSetMetaData metaData = rs.getMetaData();
+            // 获取元数据的列数
+            int columnCount = metaData.getColumnCount();
+            // 遍历结果集
+            while(rs.next()){
+                // 通过反射获取实体类的Class对象
+                Class entityClass = ClassUtil.getEntityClass(entityClassName);
+                // 通过反射创建实例,强转为T类型
+                T instance = (T)ClassUtil.createInstance(entityClassName);
+                // 遍历
+                for (int i = 0; i < columnCount; i++) {
+                    // 读取列名
+                    String columnName = metaData.getColumnName(i + 1);
+                    // 获取当前行指定列的值
+                    Object columnValue = rs.getObject(i + 1);
+                    // 给实例赋值
+                    ClassUtil.setProperty(instance,columnName,columnValue);
+                }
+                // 集合中添加元素
+                list.add(instance);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }finally {
+            DButil.close(connection,pstm,rs);
+        }
+        return list;
+    }
+
+    // 查询单个方法
+    protected T load(String sql,Object ...params){
+        // 获取连接
+        connection = DButil.getConnection();
+        try{
+            // 获取statement对象
+            pstm = connection.prepareStatement(sql);
+            // 设置SQL参数
+            setParams(pstm,params);
+            // 执行SQL
+            rs = pstm.executeQuery();
+            // 获取结果集的元数据，也就是每一行的数据
+            ResultSetMetaData metaData = rs.getMetaData();
+            // 获取元数据的列数
+            int columnCount = metaData.getColumnCount();
+            // 遍历结果集
+            if(rs.next()){
+                // 获取水果类的实体类
+                Class entityClass = ClassUtil.getEntityClass(entityClassName);
+                // 创建实例
+                T instance = (T)ClassUtil.createInstance(entityClassName);
+                // 给实例附属性
+                for(int i = 1 ; i<=columnCount;i++){
+                    //获取列明,其实我们故意将列名和属性名保持一致，就是为了此处的反射赋值
+                    String columnName = metaData.getColumnName(i);
+                    Object columnValue = rs.getObject(i);
+                    ClassUtil.setProperty(instance,columnName,columnValue);
+                }
+                // 把这个实例返回
+                return instance;
+            }
+        }catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+        return null;
+    }
+}
+
+```
+
+0、封装工具类 反射使用
+
+```java
+package com.fruit.yuluo.utils;
+
+import java.lang.reflect.Field;
+
+public class ClassUtil {
+    // 获取 Class对象
+    public static Class getEntityClass(String entityName){
+        try {
+            return Class.forName(entityName);
+        } catch (ClassNotFoundException e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+    // 通过反射创建Class对象的实例
+    public static Object createInstance(String entityName){
+        try {
+            return getEntityClass(entityName).newInstance();
+        } catch (InstantiationException e) {
+            e.printStackTrace();
+        } catch (IllegalAccessException e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
+    // 通过反射给实例的属性赋值
+    public static void setProperty(Object obj,String propertyName,Object propertyValue){
+        try {
+            Field field = obj.getClass().getDeclaredField(propertyName);
+            // 忽略警告
+            field.setAccessible(true);
+            // 赋值
+            field.set(obj,propertyValue);
+        } catch (NoSuchFieldException e) {
+            e.printStackTrace();
+        } catch (IllegalAccessException e) {
+            e.printStackTrace();
+        }
+    }
+}
+
+```
+
+0、封装工具类，数据库连接
+
+```java
+package com.fruit.yuluo.utils;
+
+import com.alibaba.druid.pool.DruidDataSource;
+
+import java.io.InputStream;
+import java.sql.*;
+import java.util.Properties;
+
+public class DButil {
+    // 定义静态数据
+    private static String DRIVER;
+    private static String URL;
+    private static String USER;
+    private static String PWD;
+    // 定义静态的 数据库连接池对象
+    private static DruidDataSource dataSource;
+
+    // 静态代码块，在类加载时读取配置
+    static {
+        try {
+            // 创建Properties Map集合类
+            Properties prop = new Properties();
+            // 获取当前类加载器，获取 jdbc的读取流
+            InputStream in = DButil.class.getClassLoader().getResourceAsStream("jdbc.properties");
+            // 加载配置文件
+            prop.load(in);
+
+            // 获取数据库连接池对象(方式1)
+            // 方式 1：DruidDataSourceFactory.createDataSource(prop)
+            // 直接用 工厂方法 根据 Properties 配置生成一个 DruidDataSource 对象
+            // 配置集中在 jdbc.properties 文件里，支持 Druid 的各种高级配置
+            // dataSource = DruidDataSourceFactory.createDataSource(prop);
+
+            // 创建数据库连接池对象(方式2)
+            // 手动创建 Druid 连接池对象，然后逐个设置属性
+            dataSource = new DruidDataSource();
+
+            // 获取properties文件中的值
+            DRIVER = prop.getProperty("DRIVER");
+            URL = prop.getProperty("URL");
+            USER = prop.getProperty("USER");
+            PWD = prop.getProperty("PWD");
+
+            // 加载mysql驱动(数据库连接池 Druid会自动加载mysql驱动)
+            // Class.forName(DRIVER);
+
+            // 设置用户名，密码
+            dataSource.setDriverClassName(DRIVER);
+            dataSource.setUrl(URL);
+            dataSource.setUsername(USER);
+            dataSource.setPassword(PWD);
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    // 获取连接,返回一个连接对象
+    public static Connection getConnection() {
+        try {
+           return dataSource.getConnection();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
+    // 关闭连接
+    public static void close(Connection conn, Statement stmt, ResultSet rs) {
+        try {
+            if (rs != null) rs.close();
+            if (stmt != null) stmt.close();
+            if (conn != null) conn.close();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+}
+
+```
+
+0、封装serlver基类
+
+```java
+package com.fruit.yuluo.servlet;
+
+import org.thymeleaf.TemplateEngine;
+import org.thymeleaf.context.WebContext;
+import org.thymeleaf.templateresolver.ServletContextTemplateResolver;
+
+import javax.servlet.ServletException;
+import javax.servlet.http.HttpServlet;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+import java.io.IOException;
+
+public class ViewBaseServlet extends HttpServlet {
+    private TemplateEngine templateEngine;
+
+    @Override
+    public void init() throws ServletException {
+        // 初始化 Thymeleaf 模板解析器
+        ServletContextTemplateResolver resolver =
+                new ServletContextTemplateResolver(this.getServletContext());
+
+        resolver.setPrefix(getServletContext().getInitParameter("view-prefix"));
+        resolver.setSuffix(getServletContext().getInitParameter("view-suffix"));
+        resolver.setCharacterEncoding("utf-8");
+
+        templateEngine = new TemplateEngine();
+        templateEngine.setTemplateResolver(resolver);
+    }
+    // 渲染模版
+    protected void processTemplate(String templateName,
+                                   HttpServletRequest req,
+                                   HttpServletResponse resp) throws IOException {
+        // 设置响应类型为 HTML，字符集 UTF-8
+        resp.setContentType("text/html;charset=UTF-8");
+        // 构建 Thymeleaf 的上下文对象（包含 request、response、servletContext 等）
+        WebContext webContext = new WebContext(req, resp, getServletContext());
+        // 调用 Thymeleaf 的模板引擎，把指定模板渲染为 HTML 并写入响应流
+        templateEngine.process(templateName, webContext, resp.getWriter());
+    }
+}
+
+
+
+```
+
 1、定义一个FruitDao接口和实现类
 
 ```java
@@ -1351,12 +1715,14 @@ public class fruitServlet extends ViewBaseServlet {
 -->
 <tr th:if="${not #lists.isEmpty(session.fruitList)}" th:each="fruit : ${session.fruitList}">
     <td th:text="${fruit.id}"></td>
-    <td th:text="${fruit.fname}"></td>
+    <td >
+        <a style="text-decoration: none" th:href="@{editFruit(id=${fruit.id})}" th:text="${fruit.fname}"></a>
+    </td>
     <td th:text="${fruit.price}"></td>
     <td th:text="${fruit.count}"></td>
     <td>
         <!-- 删除按钮 -->
-        <a th:href="@{/fruit/delete(id=${fruit.id})}"
+        <a th:href="@{/delete(id=${fruit.id})}"
            class="btn btn-danger btn-sm"
            onclick="return confirm('确定要删除这个水果吗？');">删除</a>
     </td>
@@ -1378,6 +1744,14 @@ public class fruitServlet extends ViewBaseServlet {
 ```
 
 删除（单个）
+
+```html
+
+```
+
+编辑水果
+
+模版页面
 
 ```html
 
