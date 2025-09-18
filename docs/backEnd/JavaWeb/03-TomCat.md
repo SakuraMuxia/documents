@@ -181,7 +181,7 @@ Tomcat依赖包 servlet-api.jar 和 tomcat-api.jar 包路径找不到报错
 
 选中当前项目，然后点击File，选中Project Structure，
 
-![image-20250917102038328](000-images/03-TomCat/image-20250917102038328.png)
+![image-20250917102038328](https://2216847528.oss-cn-beijing.aliyuncs.com/asset/image-20250917102038328.png)
 
 双击Tomcat，重新选中，以上两个包（位置在tomcat安装目录的lib文件夹下），然后应用即可。
 

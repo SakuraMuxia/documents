@@ -92,7 +92,7 @@ keyword=apple&page=2
 
 请求报文的三个部分
 
-![image-20250917162548302](000-images/05-Http/image-20250917162548302.png)
+![image-20250917162548302](https://2216847528.oss-cn-beijing.aliyuncs.com/asset/image-20250917162548302.png)
 
 **请求行**
 
@@ -141,7 +141,7 @@ keyword=apple&page=2
 
 含义：整个请求体以某种特定格式来组织数据，例如JSON格式。
 
-![image-20250917162726518](000-images/05-Http/image-20250917162726518.png)
+![image-20250917162726518](https://2216847528.oss-cn-beijing.aliyuncs.com/asset/image-20250917162726518.png)
 
 ## 请求方式
 
@@ -183,7 +183,7 @@ MIME类型定义参考：
 
 ## 响应报文
 
-![image-20250917163002317](000-images/05-Http/image-20250917163002317.png)
+![image-20250917163002317](https://2216847528.oss-cn-beijing.aliyuncs.com/asset/image-20250917163002317.png)
 
 **响应状态行**
 
