@@ -68,6 +68,16 @@ logs/localhost.*.log 查看应用日志
 
 ![image-20250905115440241](https://2216847528.oss-cn-beijing.aliyuncs.com/asset/image-20250905115440241.png)
 
+## Tomcat日志乱码
+
+修改Tomcat源文件中的/conf/logging.[properties](https://so.csdn.net/so/search?q=properties&spm=1001.2101.3001.7020)中的几个编码方式如下
+
+![image-20250919094050061](https://2216847528.oss-cn-beijing.aliyuncs.com/asset/image-20250919094050061.png)
+
+```java
+
+```
+
 **作为服务启动**
 
 按下快捷键`Win`+`r`打开`cmd`
