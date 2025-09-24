@@ -10,6 +10,32 @@ Servlet 技术本质上是 **处理请求的，不是专门用来渲染页面的
 
 3、Servlet 是运行在服务器上的一个java 小程序，它可以接收客户端发送过来的请求，并响应数据给客户端。
 
+## Servlet依赖问题
+
+**Servlet** 是 **Java EE（Jakarta EE）规范**，只是一套接口和规范（比如 `javax.servlet` 包），定义了如何编写 Web 组件。
+
+**Tomcat** 是 Servlet 规范的一个 **实现容器（Servlet 容器 / Web 服务器）**，负责解析 HTTP 请求、调用 Servlet、返回响应
+
+Servlet 是 **标准**
+
+Tomcat 是 **实现**
+
+- Tomcat 安装包的 `lib` 目录里确实有 `servlet-api.jar` 或 `javax.servlet-api.jar`。
+- 但是这些 jar 只是 **编译用的接口定义**，并不是 Tomcat 自己写的 Servlet。
+- 你写的 Servlet 程序（`@WebServlet` 标注的类）运行时，会交给 Tomcat 来调用。
+
+因此，有时候会产生一种错觉：**“好像 Servlet 就是 Tomcat 提供的”**。 实际上，Servlet 属于 **规范**，Tomcat 只是 **实现了规范**
+
+## 继承关系
+
+```ts
+1) javax.servlet.Servlet接口
+2) javax.servlet.GenericServlet抽象子类
+3) javax.servlet.http.HttpServlet这个抽象类是GenericServlet抽象子类
+```
+
+
+
 ## API
 
 ### Servlet类
@@ -29,6 +55,86 @@ public interface Servlet {
     void destroy();
 }
 
+```
+
+**方法**
+
+service()
+
+```java
+作用：是 HttpServlet 接收请求的总入口;
+
+参数：ServletRequest req, ServletResponse resp
+    
+返回值：无
+    
+示例：
+
+void service(ServletRequest req, ServletResponse resp) throws ServletException, IOException
+
+```
+
+init()
+
+```java
+作用：初始化方法;
+
+参数：ServletConfig config
+    
+返回值：无
+    
+示例：
+
+void init(ServletConfig config)
+
+```
+
+getServletConfig()
+
+```java
+作用：返回当前 Servlet 的配置对象 ServletConfig，可以通过它获取初始化参数（init-param）或 Servlet 名称
+
+参数：无
+    
+返回值：ServletConfig对象
+    
+示例：
+
+@Override
+public void init() throws ServletException {
+    ServletConfig config = getServletConfig();
+    String initParam = config.getInitParameter("paramName");
+    System.out.println("初始化参数：" + initParam);
+}
+```
+
+getServletInfo()
+
+```java
+作用：返回 Servlet 的信息（如版本、作者、描述）
+
+参数：无
+    
+返回值：String，Servlet 信息
+    
+示例：
+@Override
+public String getServletInfo() {
+    return "FruitServlet v1.0 by Liu";
+}
+```
+
+destroy()
+
+```java
+作用：销毁方法;
+
+参数：无
+    
+返回值：无
+    
+示例：
+void destroy()
 ```
 
 
@@ -64,6 +170,135 @@ public class MyServlet extends GenericServlet {
     }
 }
 ```
+
+**构造方法**
+
+```java
+// 创建Servlet实例
+public GenericServlet() {
+}
+```
+
+**方法**
+
+destroy()
+
+```java
+作用：销毁方法;
+
+参数：无
+    
+返回值：无
+    
+示例：
+@Override
+public void destroy() {
+    System.out.println("Servlet 正在被销毁，释放资源...");
+    // 例如关闭数据库连接
+}
+```
+
+init()
+
+```java
+/**
+ * 作用：Servlet 初始化方法，当容器加载 Servlet 时调用
+ * 参数：ServletConfig config
+ * 返回值：无
+ */
+@Override
+public void init() throws ServletException {
+    System.out.println("Servlet 初始化");
+    // 获取初始化参数示例
+    String initParam = getServletConfig().getInitParameter("paramName");
+    System.out.println("初始化参数：" + initParam);
+}
+```
+
+service()
+
+```java
+/**
+ * 作用：处理客户端请求的总入口方法
+ * 参数：ServletRequest req, ServletResponse resp
+ * 返回值：无
+ */
+@Override
+public void service(ServletRequest req, ServletResponse resp) throws ServletException, IOException {
+    resp.setContentType("text/html;charset=UTF-8");
+    resp.getWriter().write("<h1>Hello GenericServlet</h1>");
+}
+```
+
+getServletConfig()
+
+```java
+/**
+ * 作用：获取当前 Servlet 的配置信息对象 ServletConfig
+ * 参数：无
+ * 返回值：ServletConfig
+ */
+ServletConfig config = getServletConfig();
+String initParam = config.getInitParameter("paramName");
+```
+
+getServletContext()
+
+```java
+/**
+ * 作用：获取 ServletContext 对象（全局作用域）
+ * 参数：无
+ * 返回值：ServletContext
+ */
+ServletContext context = getServletContext();
+context.setAttribute("appName", "FruitApp");
+String appName = (String) context.getAttribute("appName");
+```
+
+getInitParameter(String name)
+
+```java
+/**
+ * 作用：获取初始化参数值
+ * 参数：String name - 参数名
+ * 返回值：String - 参数值
+ */
+String paramValue = getServletConfig().getInitParameter("paramName");
+System.out.println("初始化参数：" + paramValue);
+```
+
+示例
+
+```java
+import javax.servlet.*;
+import java.io.IOException;
+
+public class MyGenericServlet extends GenericServlet {
+
+    @Override
+    public void init() throws ServletException {
+        System.out.println("Servlet 初始化");
+        String param = getServletConfig().getInitParameter("paramName");
+        System.out.println("初始化参数：" + param);
+    }
+
+    @Override
+    public void service(ServletRequest req, ServletResponse resp) throws ServletException, IOException {
+        resp.setContentType("text/html;charset=UTF-8");
+        resp.getWriter().write("<h1>Hello from GenericServlet</h1>");
+        // 使用 ServletContext
+        getServletContext().setAttribute("appName", "FruitApp");
+    }
+
+    @Override
+    public void destroy() {
+        System.out.println("Servlet 销毁，释放资源");
+    }
+}
+
+```
+
+
 
 ### HttpServlet类
 
@@ -385,7 +620,7 @@ httpRes.sendRedirect("marin");
 **获取上下文对象**
 
 ```java
-// 方式1：通过 Servlet 获取
+// 方式1：通过 Servlet 获取，调用父类中的方法
 ServletContext context = this.getServletContext();
 
 // 方式2：通过 request 获取
@@ -394,6 +629,9 @@ ServletContext context = request.getServletContext();
 // 方式3：通过 session 获取
 ServletContext context = session.getServletContext();
 
+// 方式4：通过 ServletConfig对象获取
+ServletConfig config = getServletConfig();
+ServletContext context = config.getServletContext();
 ```
 
 **常用方法**
@@ -440,9 +678,115 @@ props.load(in);
 
 ```
 
-**生命周期**
+### ServletConfig接口
 
-Web 应用启动 → Web 应用销毁
+**方法**
+
+getInitParameter(String name)
+
+```java
+/**
+ * 作用：获取指定初始化参数的值
+ * 参数：String name - 初始化参数名
+ * 返回值：String - 对应参数值，如果参数不存在返回 null
+ */
+ServletConfig config = getServletConfig();
+String value = config.getInitParameter("paramName");
+System.out.println("初始化参数：" + value);
+```
+
+getInitParameterNames()
+
+```java
+/**
+ * 作用：获取所有初始化参数名的枚举
+ * 参数：无
+ * 返回值：Enumeration<String> - 初始化参数名集合
+ */
+Enumeration<String> names = getServletConfig().getInitParameterNames();
+while (names.hasMoreElements()) {
+    String paramName = names.nextElement();
+    System.out.println("初始化参数名：" + paramName);
+}
+
+```
+
+getServletName()
+
+```java
+/**
+ * 作用：获取当前 Servlet 的名称
+ * 参数：无
+ * 返回值：String - Servlet 名称
+ */
+String servletName = getServletConfig().getServletName();
+System.out.println("Servlet 名称：" + servletName);
+
+```
+
+getServletContext()
+
+```java
+/**
+ * 作用：获取 ServletContext 对象（全局应用作用域）
+ * 参数：无
+ * 返回值：ServletContext - 当前 Web 应用的上下文对象
+ */
+ServletContext context = getServletConfig().getServletContext();
+context.setAttribute("appName", "FruitApp");
+String appName = (String) context.getAttribute("appName");
+System.out.println("应用名称：" + appName);
+
+```
+
+示例
+
+```java
+import javax.servlet.*;
+import java.io.IOException;
+import java.util.Enumeration;
+
+public class MyServletConfigServlet extends GenericServlet {
+
+    @Override
+    public void init() throws ServletException {
+        ServletConfig config = getServletConfig();
+        
+        // 获取 Servlet 名称
+        System.out.println("Servlet 名称：" + config.getServletName());
+
+        // 获取单个初始化参数
+        String param = config.getInitParameter("paramName");
+        System.out.println("初始化参数：" + param);
+
+        // 获取所有初始化参数名
+        Enumeration<String> names = config.getInitParameterNames();
+        while (names.hasMoreElements()) {
+            String name = names.nextElement();
+            String value = config.getInitParameter(name);
+            System.out.println(name + " = " + value);
+        }
+
+        // 获取 ServletContext
+        ServletContext context = config.getServletContext();
+        context.setAttribute("appName", "FruitApp");
+        System.out.println("应用名称：" + context.getAttribute("appName"));
+    }
+
+    @Override
+    public void service(ServletRequest req, ServletResponse resp) throws ServletException, IOException {
+        resp.getWriter().write("查看控制台输出 ServletConfig 信息");
+    }
+
+    @Override
+    public void destroy() {
+        System.out.println("Servlet 销毁");
+    }
+}
+
+```
+
+
 
 ## Servlet基本使用
 
@@ -923,3 +1267,142 @@ Servlet 规范定义了 **四个属性域**（Attribute Scope）：
     }
 ```
 
+## WebServlet注解
+
+`@WebServlet` 注解 **完全属于 Servlet 规范（Servlet 3.0+）的内容**，和Thymeleaf 没有关系。
+
+作用：
+
+- 它用来声明一个 Servlet 类，并指定它的访问 URL 映射。
+- 替代了早期在 `web.xml` 里配置 `<servlet>` 和 `<servlet-mapping>` 的方式。
+
+示例：
+
+```java
+import javax.servlet.ServletException;
+import javax.servlet.annotation.WebServlet;
+import javax.servlet.http.HttpServlet;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+import java.io.IOException;
+
+@WebServlet("/hello")
+public class HelloServlet extends HttpServlet {
+    @Override
+    protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
+        resp.getWriter().write("Hello Servlet!");
+    }
+}
+```
+
+访问路径：`http://localhost:8080/项目名/hello`
+
+`@WebServlet` 在哪里定义：
+
+- 包：`javax.servlet.annotation.WebServlet`（Servlet 3.x 规范）
+- 所属：Servlet API（比如 `javax.servlet-api-4.0.1.jar`）
+
+不是 Spring、不是 Thymeleaf 的东西。
+
+### 常见属性
+
+`@WebServlet` 注解里有几个常用参数：
+
+1、urlPatterns` / `value
+
+* 指定 Servlet 的 URL 映射，可以写多个。
+
+```java
+@WebServlet(urlPatterns = {"/hello", "/hi"})
+public class HelloServlet extends HttpServlet { ... }
+
+// 如果一个servlet只有一个路径可以省略为
+@WebServlet("/hello")
+public class HelloServlet extends HttpServlet { ... }
+```
+
+2、**`name`**
+
+- 指定 Servlet 的名字，等价于 `<servlet-name>`。
+
+```java
+@WebServlet(name = "helloServlet", urlPatterns = "/hello")
+```
+
+3、loadOnStartup
+
+* 是否在服务器启动时加载（默认为 `-1`：首次访问时才加载）。
+
+```java
+@WebServlet(urlPatterns = "/init", loadOnStartup = 1)
+```
+
+4、initParams
+
+* 配置初始化参数，等价于 `<init-param>`。
+
+```java
+@WebServlet(
+    urlPatterns = "/config",
+    initParams = {
+        @WebInitParam(name = "username", value = "admin"),
+        @WebInitParam(name = "password", value = "123456")
+    }
+)
+public class ConfigServlet extends HttpServlet {
+    @Override
+    protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws IOException {
+        String user = getServletConfig().getInitParameter("username");
+        String pwd = getServletConfig().getInitParameter("password");
+        resp.getWriter().write("Config: " + user + " / " + pwd);
+    }
+}
+
+```
+
+**与 web.xml的关系**
+
+- `@WebServlet` 是 **注解方式配置 Servlet**。
+- `web.xml` 是 **XML 配置方式**。
+- 两者可以并存，但优先级是 **`web.xml` > 注解**。
+
+### 使用场景
+
+- 传统 Java Web 项目（基于 Servlet + JSP/Thymeleaf）开发。
+- 用来接收请求，处理业务逻辑，最后转发到视图层。
+
+## 生命周期
+
+实例化：调用无参构造方法
+
+初始化：调用init方法
+
+服务：调用service方法
+
+销毁：调用destroy方法
+
+## 启动时机
+
+`loadOnStartup`属性的概念，默认值为-1，
+
+使用注解方式设置 loadOnStartup；
+
+使用web.xml方式设置loadOnStartup；
+
+## 初始化
+
+web.xml配置文件配置初始化参数
+
+```xml
+<!--load-on-startup标签 必须放在init-param标签的后边 -->
+```
+
+使用注解配置初始化参数
+
+```java
+
+```
+
+## 上下文参数
+
+在Servlet初始化阶段获取web.xml的上下文参数。这个作用在 封装ViewBaseServlet中使用过。

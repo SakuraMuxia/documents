@@ -234,3 +234,11 @@ Tomcat 是一个 **Servlet 容器（Web 服务器）**，它的主要作用是�
 3. **把 Servlet/JSP 的处理结果返回给浏览器**
 
 👉 换句话说，Tomcat **只是运行环境**，它不会主动去渲染页面。
+
+### Tomcat依赖
+
+- Tomcat 安装包的 `lib` 目录里确实有 `servlet-api.jar` 或 `javax.servlet-api.jar`。
+- 但是这些 jar 只是 **编译用的接口定义**，并不是 Tomcat 自己写的 Servlet。
+- 你写的 Servlet 程序（`@WebServlet` 标注的类）运行时，会交给 Tomcat 来调用。
+
+因此，有时候会产生一种错觉：**“好像 Servlet 就是 Tomcat 提供的”**。 实际上，Servlet 属于 **规范**，Tomcat 只是 **实现了规范**
