@@ -1349,6 +1349,8 @@ public abstract class BaseDao<T> {
             }
         }catch (SQLException e) {
             throw new RuntimeException(e);
+        }finally {
+            DButil.close(connection,pstm,rs);
         }
         return null;
     }
@@ -2499,3 +2501,934 @@ web.xml
 - `ViewBaseServlet` → 封装 Thymeleaf 渲染
 
 只需要注意 **路径统一**、**取消按钮写法** 和 **异常处理**，其他地方已经很完善了。
+
+### 添加Service层
+
+新增FruitService.java 接口 com.fruit.yuluo.service.FruitService
+
+```java
+package com.fruit.yuluo.service;
+
+import com.fruit.yuluo.pojo.Fruit;
+
+import java.util.List;
+
+public interface FruitService {
+
+    // 根据查询关键字检索指定页的数据
+    List<Fruit> getFruitList(String keyword,Integer pageNo,Integer pageSize);
+
+    // 查询总数
+    Integer getTotalNum(String keyword);
+
+    // 查询总页数
+    Integer getTotalPageNum(String keyword,Integer pageSize);
+
+    // 添加新库存
+    void addFruit(Fruit fruit);
+
+    // 修改库存
+    void updateFruit(Fruit fruit);
+
+    // 删除指定库存
+    void delFruit(Integer id);
+
+    // 查询指定库存
+    Fruit getFruitById(Integer id);
+}
+
+```
+
+新增FruitServiceImpl实现类 com.fruit.yuluo.service.impl.FruitServiceImpl
+
+```java
+package com.fruit.yuluo.service.impl;
+
+import com.fruit.yuluo.dao.FruitDao;
+import com.fruit.yuluo.dao.impl.FruitDaoImpl;
+import com.fruit.yuluo.pojo.Fruit;
+import com.fruit.yuluo.service.FruitService;
+
+import java.util.List;
+
+public class FruitServiceImpl implements FruitService {
+    // 创建FruitDao对象
+    FruitDao fruitDao = new FruitDaoImpl();
+
+    @Override
+    public List<Fruit> getFruitList(String keyword, Integer pageNo, Integer pageSize) {
+        return fruitDao.getFruitList(keyword,pageNo,pageSize);
+    }
+
+    @Override
+    public Integer getTotalNum(String keyword) {
+        return fruitDao.getTotalNum(keyword);
+    }
+
+    @Override
+    public Integer getTotalPageNum(String keyword, Integer pageSize) {
+        int totalNum = fruitDao.getTotalNum(keyword).intValue();
+        int totalPageNum = (totalNum + pageSize - 1) / pageSize;
+        return totalPageNum;
+    }
+
+    @Override
+    public void addFruit(Fruit fruit) {
+        fruitDao.addFruit(fruit);
+    }
+
+    @Override
+    public void updateFruit(Fruit fruit) {
+
+    }
+
+    @Override
+    public void delFruit(Integer id) {
+
+    }
+
+    @Override
+    public Fruit getFruitById(Integer id) {
+        return null;
+    }
+}
+
+```
+
+修改fruitServlet.java 代码，让Servlet类操作Service层，不直接操作DAO层
+
+com.fruit.yuluo.servlet.fruitServlet.fruitServlet
+
+```java
+package com.fruit.yuluo.servlet.fruitServlet;
+
+import com.fruit.yuluo.dao.FruitDao;
+import com.fruit.yuluo.dao.impl.FruitDaoImpl;
+import com.fruit.yuluo.pojo.Fruit;
+import com.fruit.yuluo.service.FruitService;
+import com.fruit.yuluo.service.impl.FruitServiceImpl;
+import com.fruit.yuluo.servlet.ViewBaseServlet;
+import com.fruit.yuluo.utils.StringUtils;
+
+import javax.servlet.ServletException;
+import javax.servlet.annotation.WebServlet;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+import javax.servlet.http.HttpSession;
+import java.io.IOException;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
+import java.math.BigDecimal;
+import java.util.List;
+
+@WebServlet("/fruit.do")
+public class fruitServlet extends ViewBaseServlet {
+    // 定义一个静态常量
+    private static final String REQ_DO = "fruit.do";
+    // 新增一个Service类
+    private FruitService fruitService = new FruitServiceImpl();
+    // 请求进来的所有入口
+    @Override
+    protected void service(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
+        // 设置编码
+        req.setCharacterEncoding("UTF-8");
+        // 从请求参数中获取一个叫oper的值。这个值和将来要执行的方法名对应
+        // 如果oper=list , 那么我们就调用list方法
+        // 如果oper=update , 那么我们就调用update方法
+        String oper = req.getParameter("oper");
+        // 空判断
+        if(StringUtils.isEmpty(oper)){
+            oper = "list" ;
+        }
+        // 方法调用
+        // 方式1：使用switch case 多了不方便
+        // switch(oper){
+        //     case "list":
+        //         list(req, resp);
+        //         break;
+        //     ...
+        //     default:
+        //         throw new RuntimeException("没有找到"+oper+"对应的方法！");
+        // }
+
+        // 方式2：使用反射方式
+
+        try {
+            // 获取此类实例的方法
+            Method method = this.getClass().getDeclaredMethod(oper, HttpServletRequest.class, HttpServletResponse.class);
+            // 执行方法
+            method.invoke(this,req,resp);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+    }
+    // list方法
+    protected void list(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
+        // 获取session对象
+        HttpSession session = req.getSession();
+        // 定义关键字
+        String keyword = "";
+        // 定义前端的操作标记
+        String operate = req.getParameter("operate");
+        // 定义前端页码和每页大小
+        Integer pageNo = 1;
+        Integer pageSize = 5;
+        Integer pageCount = 0;
+        // 删除Dao实现类
+
+        // 搜索操作
+        if ("search".equals(operate)){
+            // 获取请求参数中关键字
+            String keywordStr = req.getParameter("keyword");
+            if (StringUtils.isNotEmpty(keywordStr)){
+                keyword = keywordStr;
+            }
+            // 把关键字存储到session中,再会话中始终存在
+            session.setAttribute("keyword",keyword);
+        }else{ // 下一页操作
+            Object keywordObj = session.getAttribute("keyword");
+            // 如果不为空
+            if (keywordObj != null){
+                // 强转为String类型，并复制给keyword
+                keyword = (String) keywordObj;
+            }
+        }
+        // 获取前端传来的页码
+        String pageNoStr = req.getParameter("pageNo");
+        String pageSizeStr = req.getParameter("pageSize");
+        // 判断pageNoStr和pageSizeStr 不能为空且不能为null
+        if (StringUtils.isNotEmpty(pageNoStr)){
+            pageNo = Integer.parseInt(pageNoStr);
+        }
+        if (StringUtils.isNotEmpty(pageSizeStr)){
+            pageSize = Integer.parseInt(pageSizeStr);
+        }
+        // 查询数据库，使用service层实现
+        List<Fruit> fruitList = fruitService.getFruitList(keyword, pageNo, pageSize);
+        Integer totalNum = fruitService.getTotalNum(keyword);
+        Integer totalPageNum = fruitService.getTotalPageNum(keyword, pageSize);
+
+        // 判断pageNo和pageSize合法范围
+        if (pageNo <=0){
+            pageNo = 1;
+        }
+        if (pageNo >= totalPageNum){
+            pageNo = totalPageNum;
+        }
+
+        // 不必放 session，避免并发和数据混乱
+        req.setAttribute("fruitList",fruitList);
+        req.setAttribute("pageCount",totalNum);
+        req.setAttribute("totalCount",totalPageNum);
+
+        //将pageNo保存到session作用域
+        req.setAttribute("pageNo",pageNo);
+        req.setAttribute("pageSize",pageSize);
+
+        // 使用thymeleaf渲染,渲染fruitList页面,在ViewBaseServlet初始化时配置了，读取web.xml中的配置
+        super.processTemplate("fruitList",req,resp);
+    }
+
+    // add 方法
+    protected void add(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
+        // 获取参数
+        String fname = req.getParameter("fname");
+        String price = req.getParameter("price");
+        // 转为大数
+        BigDecimal bigPrice = new BigDecimal(price.trim());
+        Integer fcount = Integer.parseInt(req.getParameter("count"));
+        String remark = req.getParameter("remark");
+        // 调用dao方法
+        Fruit fruit = new Fruit(fname,bigPrice,fcount,remark);
+        fruitService.addFruit(fruit);
+        // 重定向到列表请求
+        resp.sendRedirect(REQ_DO);
+    }
+
+    // edit 方法
+    protected void edit(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
+        // 接收请求传来的参数
+        String idStr = req.getParameter("id");
+        // 判断条件,不能为空且不能不传
+        if(idStr !=null && !"".equals(idStr)){
+            // 转为包装类,同时强转为Integer类
+            Integer id = Integer.parseInt(idStr);
+            // 使用service层
+            Fruit fruit = fruitService.getFruitById(id);
+            // 将fruit放在request请求域中
+            req.setAttribute("fruit",fruit);
+            // System.out.println("fruit = " + fruit);
+            // 转发到编辑页面
+            super.processTemplate("editFruit",req,resp);
+        }
+    }
+
+    // update 方法
+    protected void update(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
+        // 获取Post请求中，请求体中的数据
+        String fname = req.getParameter("fname");
+        String price = req.getParameter("price");
+        // 转为大数
+        BigDecimal bigPrice = new BigDecimal(price.trim());
+        Integer count = Integer.parseInt(req.getParameter("count"));
+        String remark = req.getParameter("remark");
+        Integer id = Integer.parseInt(req.getParameter("id"));
+        // 创建水果对象
+        Fruit fruit = new Fruit(id,fname,bigPrice,count,remark);
+        // 更新数据库数据
+        fruitService.updateFruit(fruit);
+        // 转发到 水果列表页面，
+        // processTemplate("fruitList",req,resp);
+        // 重定向 列表请求
+        resp.sendRedirect(REQ_DO);
+    }
+
+    // del 方法
+    protected void del(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
+        // 解析请求中的id
+        Integer id = Integer.parseInt(req.getParameter("id"));
+        // 调用删除
+        fruitService.delFruit(id);
+        // 重定向 到列表请求
+        resp.sendRedirect(REQ_DO);
+    }
+}
+
+```
+
+### 解耦合
+
+可以看出Service层需要Dao层实例对象操作，Servlet层需要Service层的实例操作，封装JavaBean文件用来解耦合。
+
+新建javaBean配置文件 resource/bean.xml
+
+```xml
+<?xml version="1.0" encoding="utf-8" ?>
+<!DOCTYPE beans [
+    <!--定义元素根节点 * 一个或多个 -->
+    <!ELEMENT beans (bean*)>
+    <!--定义元素bean子节点 * 一个或多个 -->
+    <!ELEMENT bean (property*)>
+    <!--定义元素property节点 类型为字符串 -->
+    <!ELEMENT property (#PCDATA)>
+    <!--定义节点上的属性-->
+    <!ATTLIST bean id ID #REQUIRED>
+    <!ATTLIST bean class CDATA #REQUIRED>
+    <!ATTLIST property name CDATA #REQUIRED>
+    <!ATTLIST property ref IDREF #REQUIRED>
+]>
+
+<beans>
+    <!--bean:使用javaBean组件 定义每个接口的实现类位置 -->
+    <bean id="fruitDao" class="com.fruit.yuluo.dao.impl.FruitDaoImpl"></bean>
+    <bean id="fruitService" class="com.fruit.yuluo.service.impl.FruitServiceImpl" >
+        <!-- 声明FruitServiceImpl实现类中属性名 -->
+        <!-- FruitDao fruitDao = new FruitDaoImpl(); -->
+        <!-- ref 指向FruitDaoImpl实现类的bean标签的id -->
+        <property name="fruitDao" ref="fruitDao"></property>
+    </bean>
+</beans>
+```
+
+### 封装IoC容器
+
+实现一个 **简单版的 IoC 容器**（类似 Spring 的 `ApplicationContext`），根据 `bean.xml` 的配置。
+
+- 负责 **创建对象实例**（反射）。
+- 负责 **注入依赖**（属性赋值）。
+- 类似一个工厂，负责生产实例。
+
+`beanMap` 就是一个 **简单的单例池**。
+
+- 第一次循环：实例化所有 bean。
+- 第二次循环：根据 `<property>` 做依赖注入。
+
+最终效果：
+
+```java
+FruitServiceImpl fruitService = new FruitServiceImpl();
+fruitService.setFruitDao(new FruitDaoImpl());
+```
+
+> `DocumentBuilderFactory.newInstance()` 就够了，内部会自己找实现类。
+
+封装BeanFactory接口
+
+```java
+package com.fruit.yuluo.ioc;
+
+// Bean工厂，给一个id返回一个JavaBean实例
+public interface BeanFactory {
+    Object getBean(String id);
+}
+```
+
+实现BeanFactory接口，ClassPathXmlApplicationContext类
+
+com.fruit.yuluo.ioc.impl.ClassPathXmlApplicationContext
+
+```java
+package com.fruit.yuluo.ioc.impl;
+
+import com.fruit.yuluo.ioc.BeanFactory;
+import com.fruit.yuluo.utils.ClassUtil;
+import com.sun.org.apache.xerces.internal.jaxp.DocumentBuilderFactoryImpl;
+import org.w3c.dom.Document;
+import org.w3c.dom.Element;
+import org.w3c.dom.Node;
+import org.w3c.dom.NodeList;
+
+import javax.xml.parsers.DocumentBuilder;
+import javax.xml.parsers.DocumentBuilderFactory;
+import javax.xml.parsers.ParserConfigurationException;
+import java.io.InputStream;
+import java.util.HashMap;
+import java.util.Map;
+
+public class ClassPathXmlApplicationContext implements BeanFactory {
+
+    // 创建一个Map集合，键值对集合，每一个键值，键为String类型的接口类型，值为接口的实现类实例。
+    // 这些实例中根据xml的配置，有的有属性且指向另一个实例对象，有的没有属性
+    // {{"fruitDao":@xxcc},{"fruiService":@xxzz}}
+    /*
+    * @xxcc: new FruitDaoImpl 实例
+    * @xxzz: new FruitServiceImpl 实例，且包含 @xxzz.fruitDao = @xxcc 属性
+    * */
+    private Map<String,Object> beanMap = new HashMap<>();
+
+    @Override
+    public Object getBean(String id) {
+        // 获取map集合中的键的值
+        return beanMap.get(id);
+    }
+
+    // 在构造方法中解析xml文件配置
+    public ClassPathXmlApplicationContext() {
+        try {
+            // 加载xml
+            InputStream in = this.getClass().getClassLoader().getResourceAsStream("bean.xml");
+            DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
+            DocumentBuilder builder = factory.newDocumentBuilder();
+            // 获取doc对象
+            Document doc = builder.parse(in);
+            // 解析doc对象，每个Node标签节点称为一个bean
+            NodeList beanNodeList = doc.getElementsByTagName("bean");
+            // 获取bean节点
+            for (int i = 0; i < beanNodeList.getLength(); i++) {
+                // 获取bean节点
+                Node beanNode = beanNodeList.item(i);
+                // 判断如果是元素节点
+                if (beanNode.getNodeType() == Node.ELEMENT_NODE){
+                    // 强制转为元素节点
+                    Element beanElement = (Element) beanNode;
+                    // 获取bean元素上属性
+                    String id = beanElement.getAttribute("id"); // fruitDao
+                    String className = beanElement.getAttribute("class"); // com.yuluo.dao.impl.FruitDaoImpl
+                    // 通过反射获取实现类的实例，bean，种子
+                    Object beanInstance = ClassUtil.createInstance(className); // new FruitDaoImpl @xxcc
+                    // 把这个实例对象存放在map集合中
+                    beanMap.put(id,beanInstance); // {{"fruitDao": @xxcc},{"fruiService":@xxzz}}
+                    /*
+                    *  {{"fruitDao":@xxcc},{"fruiService":@xxzz}}
+                    *
+                    * */
+
+                }
+            }
+            // 重新遍历 beanNodeList 节点
+            for (int i = 0; i < beanNodeList.getLength(); i++) {
+                Node beanNode = beanNodeList.item(i);
+                if (beanNode.getNodeType() == Node.ELEMENT_NODE){
+                    Element beanElement = (Element) beanNode;
+                    // 获取beanEle标签上的id的值
+                    String id = beanElement.getAttribute("id"); // fruitService
+                    // 从Map集合中取出 bean实例
+                    Object bean = beanMap.get(id); // @xxzz
+
+                    // 解析Xml中的子标签中的属性
+                    NodeList beanChildNodeList = beanElement.getChildNodes();
+                    for (int j = 0; j < beanChildNodeList.getLength(); j++) {
+                        Node beanChildNode = beanChildNodeList.item(j);
+                        // 判断子节点的元素的标签名称是否是property元素节点
+                        // 没有则直接跳过，表示当前类中没有属性需要工厂类的需求
+                        if (beanChildNode.getNodeType() == Node.ELEMENT_NODE && "property".equalsIgnoreCase(beanChildNode.getNodeName())){
+                            // 强转为Element元素
+                            Element propertyElement = (Element) beanChildNode;
+                            // 获取属性名和属性值
+                            String propertyName = propertyElement.getAttribute("name"); // fruitDao
+                            // 这里的Ref指向id，也就是属性名
+                            String propertyRef = propertyElement.getAttribute("ref"); // fruitDao
+                            // 将propertyRef对应的实例取出来
+                            Object refObj = beanMap.get(propertyRef); // 这里取出来的是 @xxcc 实例
+                            // 将refObj赋值给bean的 propertyName 属性
+                            // 给fruitService实例（@xxzz）中添加了 fruitDao 属性，并指定属性的指向为 FruitDao的实例（@xxcc）
+                            ClassUtil.setProperty(bean,propertyName,refObj);
+                            // 相当于在FruitService类中执行了 FruitDao fruitDao = new FruitDaoImpl()
+                        }
+                    }
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+}
+
+```
+
+
+
+### FruitServlet转为控制器
+
+将 FruitServlet 转为控制器，作为一个普通类，把请求拦截功能删除，统一上交到DispatcherServlet类中处理。
+
+新建 controller 目录，新建  com.fruit.yuluo.controller.FruitController 类，把原FruitServlet，增删改查的逻辑放在此处，控制页面的渲染。
+
+```java
+package com.fruit.yuluo.controller;
+
+import com.fruit.yuluo.ioc.BeanFactory;
+import com.fruit.yuluo.pojo.Fruit;
+import com.fruit.yuluo.service.FruitService;
+import com.fruit.yuluo.servlet.ViewBaseServlet;
+import com.fruit.yuluo.utils.StringUtils;
+
+import javax.servlet.ServletException;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+import javax.servlet.http.HttpSession;
+import java.io.IOException;
+import java.math.BigDecimal;
+import java.util.List;
+
+public class FruitController extends ViewBaseServlet {
+    // 定义一个静态常量
+    private static final String REQ_DO = "fruit.do";
+    // 新增一个Service类 (使用Ioc工厂类获取实例对象)
+    // private FruitService fruitService = new FruitServiceImpl();
+    /* 在 bean.xml 中添加了 配置
+    <bean id="fruit" class="com.fruit.yuluo.controller.FruitController">
+        <property name="fruitService" ref="fruitService"></property>
+    </bean>
+    * */
+    private FruitService fruitService;
+
+    // list方法
+    protected void list(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
+        // 获取session对象
+        HttpSession session = req.getSession();
+        // 定义关键字
+        String keyword = "";
+        // 定义前端的操作标记
+        String operate = req.getParameter("oper");
+        // 定义前端页码和每页大小
+        Integer pageNo = 1;
+        Integer pageSize = 5;
+        Integer pageCount = 0;
+
+        // 搜索操作
+        if ("search".equals(operate)){
+            // 获取请求参数中关键字
+            String keywordStr = req.getParameter("keyword");
+            if (StringUtils.isNotEmpty(keywordStr)){
+                keyword = keywordStr;
+            }
+            // 把关键字存储到session中,再会话中始终存在
+            session.setAttribute("keyword",keyword);
+        }else{ // 下一页操作
+            Object keywordObj = session.getAttribute("keyword");
+            // 如果不为空
+            if (keywordObj != null){
+                // 强转为String类型，并复制给keyword
+                keyword = (String) keywordObj;
+            }
+        }
+        // 获取前端传来的页码
+        String pageNoStr = req.getParameter("pageNo");
+        String pageSizeStr = req.getParameter("pageSize");
+        // 判断pageNoStr和pageSizeStr 不能为空且不能为null
+        if (StringUtils.isNotEmpty(pageNoStr)){
+            pageNo = Integer.parseInt(pageNoStr);
+        }
+        if (StringUtils.isNotEmpty(pageSizeStr)){
+            pageSize = Integer.parseInt(pageSizeStr);
+        }
+        // 查询数据库，使用service层实现
+        List<Fruit> fruitList = fruitService.getFruitList(keyword, pageNo, pageSize);
+        Integer totalNum = fruitService.getTotalNum(keyword);
+        Integer totalPageNum = fruitService.getTotalPageNum(keyword, pageSize);
+
+        // 判断pageNo和pageSize合法范围
+        if (pageNo <=0){
+            pageNo = 1;
+        }
+        if (pageNo >= totalPageNum){
+            pageNo = totalPageNum;
+        }
+
+        // 不必放 session，避免并发和数据混乱
+        req.setAttribute("fruitList",fruitList);
+        req.setAttribute("pageCount",totalPageNum);
+        req.setAttribute("totalCount",totalNum);
+
+        //将pageNo保存到session作用域
+        req.setAttribute("pageNo",pageNo);
+        req.setAttribute("pageSize",pageSize);
+
+        // 使用thymeleaf渲染,渲染fruitList页面,在ViewBaseServlet初始化时配置了，读取web.xml中的配置
+        super.processTemplate("fruitList",req,resp);
+    }
+
+    // add 方法
+    protected void add(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
+        // 获取参数
+        String fname = req.getParameter("fname");
+        String price = req.getParameter("price");
+        // 转为大数
+        BigDecimal bigPrice = new BigDecimal(price.trim());
+        Integer fcount = Integer.parseInt(req.getParameter("count"));
+        String remark = req.getParameter("remark");
+        // 调用service
+        Fruit fruit = new Fruit(fname,bigPrice,fcount,remark);
+        fruitService.addFruit(fruit);
+        // 重定向到列表请求
+        resp.sendRedirect(REQ_DO);
+    }
+
+    // edit 方法
+    protected void edit(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
+        // 接收请求传来的参数
+        String idStr = req.getParameter("id");
+        // 判断条件,不能为空且不能不传
+        if(idStr !=null && !"".equals(idStr)){
+            // 转为包装类,同时强转为Integer类
+            Integer id = Integer.parseInt(idStr);
+            // 使用service层
+            Fruit fruit = fruitService.getFruitById(id);
+            // 将fruit放在request请求域中
+            req.setAttribute("fruit",fruit);
+            // System.out.println("fruit = " + fruit);
+            // 转发到编辑页面
+            super.processTemplate("editFruit",req,resp);
+        }
+    }
+
+    // update 方法
+    protected void update(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
+        // 获取Post请求中，请求体中的数据
+        String fname = req.getParameter("fname");
+        String price = req.getParameter("price");
+        // 转为大数
+        BigDecimal bigPrice = new BigDecimal(price.trim());
+        Integer count = Integer.parseInt(req.getParameter("count"));
+        String remark = req.getParameter("remark");
+        Integer id = Integer.parseInt(req.getParameter("id"));
+        // 创建水果对象
+        Fruit fruit = new Fruit(id,fname,bigPrice,count,remark);
+        // 更新数据库数据
+        fruitService.updateFruit(fruit);
+        // 转发到 水果列表页面，
+        // processTemplate("fruitList",req,resp);
+        // 重定向 列表请求
+        resp.sendRedirect(REQ_DO);
+    }
+
+    // del 方法
+    protected void del(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
+        // 解析请求中的id
+        Integer id = Integer.parseInt(req.getParameter("id"));
+        // 调用删除
+        fruitService.delFruit(id);
+        // 重定向 到列表请求
+        resp.sendRedirect(REQ_DO);
+    }
+}
+
+```
+
+删除 FruitServlet 类。
+
+### 封装中央Servlet类
+
+新建一个请求分发Servlet，用来拦截所有的请求 （*.do），DispatcherServlet类。用来接管原 FruitServlet 的请求处理功能。这个类可用于所有功能的请求处理。
+
+com.fruit.yuluo.myssm.servlet.DispatcherServlet
+
+```java
+package com.fruit.yuluo.myssm.servlet;
+
+import com.fruit.yuluo.ioc.BeanFactory;
+import com.fruit.yuluo.ioc.impl.ClassPathXmlApplicationContext;
+import com.fruit.yuluo.servlet.ViewBaseServlet;
+import com.fruit.yuluo.utils.StringUtils;
+
+import javax.servlet.ServletException;
+import javax.servlet.annotation.WebServlet;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+import java.io.IOException;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
+
+@WebServlet("*.do")
+public class DispatcherServlet extends ViewBaseServlet {
+    // 创建 bean 实例
+    private BeanFactory beanFactory = new ClassPathXmlApplicationContext();
+    @Override
+    protected void service(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
+        // 统一设置请求头
+        req.setCharacterEncoding("UTF-8");
+        // 获取URI
+        // http://localhost/fruit.do?id=9&fname=apple&price=10
+        // uri:/fruit.do 截取字符串得到 fruit.do
+        // String uri = req.getRequestURI().substring(7);
+        String servletPath = req.getServletPath(); // 返回 "/fruit.do"
+        String uri = servletPath.substring(1, servletPath.lastIndexOf(".do"));
+        String oper = req.getParameter("oper");
+        // 截取字符串 得到fruit
+        // uri = uri.substring(0, endIndex);
+        System.out.println("uri = " + uri);
+        // 根据 得到的 请求 fruit 从 IOC容器中 取出bean实例
+        // 需要在bean.xml中配置fruit的id,uri假如是 fruit，对应是 FruitController的实例
+        /*
+        <bean id="fruit" class="com.fruit.yuluo.controller.FruitController">
+            <property name="fruitService" ref="fruitService"></property>
+        </bean>
+        * */
+        Object bean = beanFactory.getBean(uri);
+        
+        // 这里的bean是一个FruitController对象 @xxzz,且 @xxzz.fruitService = new fruitServiceImpl
+        // 默认不传操作是列表功能
+        if (StringUtils.isEmpty(oper)){
+            oper = "list";
+        }
+        // 通过反射,获取bean实例 控制器实例 的Class对象
+        Class beanClass = bean.getClass();
+        // 获取 控制器实例中的方法
+        // 由于 方法中参数类型数量不同，这里使用获取方法列表
+        Method[] methods = beanClass.getDeclaredMethods();
+        for (int i = 0; i < methods.length; i++) {
+            Method method = methods[i];
+            // 判断操作名与方法名一致
+            if (oper.equals(method.getName())){
+                try {
+                    // 调用控制器中的方法
+                    method.setAccessible(true);
+                    method.invoke(bean,req,resp);
+                    // 结束循环,页面转发和重定向,由控制器中的方法统一处理
+                    return ;
+                } catch (Exception e) {
+                    e.printStackTrace();
+                    throw new RuntimeException("未找到"+oper+"方法");
+                }
+            }
+        }
+    }
+}
+
+```
+
+注意：
+
+> 在封装中央Servlet类之后，FruitController就不是Servlet类了，其中继承的父类，原本ViewBaseServlet.java中的init方法，在Tomcat启动时就不在调用了，thymeleaf的初始化就出现了问题，就出现了报错。
+
+解决办法：暂不解决，以后代码会解决。
+
+```java
+
+```
+
+### 中央Servlet类统一处理视图
+
+解决上方的问题，使用中央Servlet类，DispatcherServlet类统一处理视图。
+
+1、改装 FruitController类，取消转发页面功能，取代为返回一个字符串，描述跳转的地址，
+
+同时删除多余参数，取消继承Servlet类，取消使用HttpReq之类的参数。
+
+可以使用 javaBean，ONGL工具类，对方法中的参数进一步的封装。
+
+```java
+package com.fruit.yuluo.controller;
+
+import com.fruit.yuluo.pojo.Fruit;
+import com.fruit.yuluo.service.FruitService;
+import com.fruit.yuluo.utils.StringUtils;
+
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpSession;
+import java.math.BigDecimal;
+import java.util.List;
+
+public class FruitController{
+    // 定义一个静态常量
+    private static final String REQ_DO = "fruit.do";
+    // 新增一个Service类 (使用Ioc工厂类获取实例对象)
+    // private FruitService fruitService = new FruitServiceImpl();
+    /* 在 bean.xml 中添加了 配置
+    <bean id="fruit" class="com.fruit.yuluo.controller.FruitController">
+        <property name="fruitService" ref="fruitService"></property>
+    </bean>
+    * */
+    private FruitService fruitService;
+
+    // list方法
+    protected String list(HttpServletRequest req){
+        // 获取session对象
+        HttpSession session = req.getSession();
+        // 定义关键字
+        String keyword = "";
+        // 定义前端的操作标记
+        String operate = req.getParameter("oper");
+        // 定义前端页码和每页大小
+        Integer pageNo = 1;
+        Integer pageSize = 5;
+        Integer pageCount = 0;
+
+        // 搜索操作
+        if ("search".equals(operate)){
+            // 获取请求参数中关键字
+            String keywordStr = req.getParameter("keyword");
+            if (StringUtils.isNotEmpty(keywordStr)){
+                keyword = keywordStr;
+            }
+            // 把关键字存储到session中,再会话中始终存在
+            session.setAttribute("keyword",keyword);
+        }else{ // 下一页操作
+            Object keywordObj = session.getAttribute("keyword");
+            // 如果不为空
+            if (keywordObj != null){
+                // 强转为String类型，并复制给keyword
+                keyword = (String) keywordObj;
+            }
+        }
+        // 获取前端传来的页码
+        String pageNoStr = req.getParameter("pageNo");
+        String pageSizeStr = req.getParameter("pageSize");
+        // 判断pageNoStr和pageSizeStr 不能为空且不能为null
+        if (StringUtils.isNotEmpty(pageNoStr)){
+            pageNo = Integer.parseInt(pageNoStr);
+        }
+        if (StringUtils.isNotEmpty(pageSizeStr)){
+            pageSize = Integer.parseInt(pageSizeStr);
+        }
+        // 查询数据库，使用service层实现
+        List<Fruit> fruitList = fruitService.getFruitList(keyword, pageNo, pageSize);
+        Integer totalNum = fruitService.getTotalNum(keyword);
+        Integer totalPageNum = fruitService.getTotalPageNum(keyword, pageSize);
+
+        // 判断pageNo和pageSize合法范围
+        if (pageNo <=0){
+            pageNo = 1;
+        }
+        if (pageNo >= totalPageNum){
+            pageNo = totalPageNum;
+        }
+
+        // 不必放 session，避免并发和数据混乱
+        req.setAttribute("fruitList",fruitList);
+        req.setAttribute("pageCount",totalPageNum);
+        req.setAttribute("totalCount",totalNum);
+
+        //将pageNo保存到session作用域
+        req.setAttribute("pageNo",pageNo);
+        req.setAttribute("pageSize",pageSize);
+
+        // 使用thymeleaf渲染,渲染fruitList页面,在ViewBaseServlet初始化时配置了，读取web.xml中的配置
+        // super.processTemplate("fruitList",req,resp);
+        // 使用中央Servlet控制器处理视图转发
+        return "list";
+    }
+
+    // add 方法
+    protected String add(HttpServletRequest req){
+        // 获取参数
+        String fname = req.getParameter("fname");
+        String price = req.getParameter("price");
+        // 转为大数
+        BigDecimal bigPrice = new BigDecimal(price.trim());
+        Integer fcount = Integer.parseInt(req.getParameter("count"));
+        String remark = req.getParameter("remark");
+        // 调用service
+        Fruit fruit = new Fruit(fname,bigPrice,fcount,remark);
+        fruitService.addFruit(fruit);
+        // 重定向到列表请求
+        // resp.sendRedirect(REQ_DO);
+        // 使用中央控制器处理题图
+        return "redirect:" + REQ_DO;
+    }
+
+    // edit 方法
+    protected String edit(HttpServletRequest req){
+        // 接收请求传来的参数
+        String idStr = req.getParameter("id");
+        // 判断条件,不能为空且不能不传
+        if(idStr !=null && !"".equals(idStr)){
+            // 转为包装类,同时强转为Integer类
+            Integer id = Integer.parseInt(idStr);
+            // 使用service层
+            Fruit fruit = fruitService.getFruitById(id);
+            // 将fruit放在request请求域中
+            req.setAttribute("fruit",fruit);
+            // System.out.println("fruit = " + fruit);
+            return "edit";
+        }
+        return null;
+    }
+
+    // update 方法
+    protected String update(HttpServletRequest req){
+        // 获取Post请求中，请求体中的数据
+        String fname = req.getParameter("fname");
+        String price = req.getParameter("price");
+        // 转为大数
+        BigDecimal bigPrice = new BigDecimal(price.trim());
+        Integer count = Integer.parseInt(req.getParameter("count"));
+        String remark = req.getParameter("remark");
+        Integer id = Integer.parseInt(req.getParameter("id"));
+        // 创建水果对象
+        Fruit fruit = new Fruit(id,fname,bigPrice,count,remark);
+        // 更新数据库数据
+        fruitService.updateFruit(fruit);
+        // 转发到 水果列表页面，
+        // processTemplate("fruitList",req,resp);
+        // 重定向 列表请求
+        return "redirect:" + REQ_DO;
+    }
+
+    // del 方法
+    protected String del(HttpServletRequest req){
+        // 解析请求中的id
+        Integer id = Integer.parseInt(req.getParameter("id"));
+        // 调用删除
+        fruitService.delFruit(id);
+        // 重定向 到列表请求
+        return "redirect:" + REQ_DO;
+    }
+}
+
+```
+
+进一步封装版本
+
+```java
+首先需要导包 ongl的jdk包
+```
+
+```java
+
+```
+
+改装 DispatcherServlet 类，对视图进行统一处理
+
+```java
+
+```
+
+进一步封装版本后的DispatcherServlet类
+
+```java
+
+```
+

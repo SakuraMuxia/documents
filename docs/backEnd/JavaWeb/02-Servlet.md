@@ -342,6 +342,10 @@ public abstract class HttpServlet extends GenericServlet {
    Integer count = Integer.parseInt(req.getParameter("count"));
    String remark = req.getParameter("remark");
    Integer id = Integer.parseInt(req.getParameter("id"));
+   
+   // 如果请求参数中一个参数有多个值，可以使用getParameterValues获取，得到一个数组
+   // localhost/fruit.do?hobby=football&hobby=pingpang&hobby=basketball
+   String[] hobbys = request.getParameterValues("hobby");
    ```
 
    （获取表单 / URL 里传过来的参数）
@@ -361,6 +365,8 @@ public abstract class HttpServlet extends GenericServlet {
 4. **获取请求的 URI/URL**
 
    ```java
+   // 假设访问的语句是 http://localhost/fruit.do?id=1&name=aqua
+   // uri = /fruit.do
    String uri = request.getRequestURI();
    String url = request.getRequestURL().toString();
    ```
@@ -395,6 +401,13 @@ public abstract class HttpServlet extends GenericServlet {
    ```java
    // 设置请求的编码，防止乱码
    req.setCharacterEncoding("utf-8");
+   ```
+
+10. 查询 查询字符串
+
+   ```java
+   // 获取查询字符串
+   Sting queryString = req.getQueryString() // id=1&name=aqua
    ```
 
    
@@ -1381,13 +1394,75 @@ public class ConfigServlet extends HttpServlet {
 
 销毁：调用destroy方法
 
+```java
+//演示Servlet生命周期
+//loadOnStartup用来设置Servlet的启动时机，默认值是-1，表示第一次访问时才会被实例化初始化
+//loadOnStartup的取值是正整数，数字越小越在前面启动
+//@WebServlet(urlPatterns = "/hello01",loadOnStartup = 1)
+public class Hello01Servlet extends GenericServlet {
+
+    public Hello01Servlet(){
+        System.out.println("Hello01Servlet正在实例化...");
+    }
+
+    @Override
+    public void init() throws ServletException {
+        System.out.println("Hello01Servlet正在初始化...");
+    }
+
+
+    @Override
+    public void service(ServletRequest servletRequest, ServletResponse servletResponse) throws ServletException, IOException {
+        System.out.println("Hello01Servlet正在服务...");
+    }
+
+    @Override
+    public void destroy() {
+        System.out.println("Hello01Servlet正在销毁...");
+    }
+}
+```
+
+
+
+> Servlet默认情况下tomcat在启动的时候，它不会实例化初始化。
+>
+> 当第一次给Hello01Servlet发请求时，它会实例化、初始化、服务。以后每次访问都是直接服务；
+>
+> 当tomcat服务器停止时，Hello01Servlet的销毁方法会被执行；
+
 ## 启动时机
 
 `loadOnStartup`属性的概念，默认值为-1，
 
 使用注解方式设置 loadOnStartup；
 
+```java
+// Web 应用启动时就立即创建并初始化 Servlet
+// Tomcat/Jetty 启动时就会调用 Servlet 的 init() 方法
+@WebServlet(urlPatterns = "/hello01",loadOnStartup = 1)
+```
+
 使用web.xml方式设置loadOnStartup；
+
+```java
+<servlet>
+    <servlet-name>Hello02Servlet</servlet-name>
+    <servlet-class>com.atguigu.servlet.Hello02Servlet</servlet-class>
+    <init-param>
+        <param-name>uname</param-name>
+        <param-value>lina</param-value>
+    </init-param>
+    <init-param>
+        <param-name>count</param-name>
+        <param-value>100</param-value>
+    </init-param>
+    <!--注意loadOnStartup配置需要在initParam后边，这是servlet定义的规则-->
+    <!--<load-on-startup>1</load-on-startup>-->
+</servlet>
+```
+
+
 
 ## 初始化
 
@@ -1395,14 +1470,93 @@ web.xml配置文件配置初始化参数
 
 ```xml
 <!--load-on-startup标签 必须放在init-param标签的后边 -->
+
+<servlet>
+    <servlet-name>Hello02Servlet</servlet-name>
+    <servlet-class>com.atguigu.servlet.Hello02Servlet</servlet-class>
+    <init-param>
+        <param-name>uname</param-name>
+        <param-value>lina</param-value>
+    </init-param>
+    <init-param>
+        <param-name>count</param-name>
+        <param-value>100</param-value>
+    </init-param>
+    <!--<load-on-startup>1</load-on-startup>-->
+</servlet>
+<servlet-mapping>
+    <servlet-name>Hello02Servlet</servlet-name>
+    <url-pattern>/hello02</url-pattern>
+</servlet-mapping>
 ```
 
 使用注解配置初始化参数
 
 ```java
 
+//演示Servlet的初始化
+/*
+@WebServlet(urlPatterns = "/hello02",
+        initParams = {
+            @WebInitParam(name = "uname",value = "lina"),
+            @WebInitParam(name="count",value = "100")
+        })
+*/
+public class Hello02Servlet extends GenericServlet {
+
+    //初始化方法可以用来读取一些初始化的参数
+    @Override
+    public void init() throws ServletException {
+        //ServletConfig表示当前Servlet的配置信息
+        ServletConfig config = getServletConfig();
+        String uname = config.getInitParameter("uname");
+        System.out.println("uname = " + uname);
+        String count = config.getInitParameter("count");
+        System.out.println("count = " + count);
+    }
+
+    @Override
+    public void service(ServletRequest servletRequest, ServletResponse servletResponse) throws ServletException, IOException {
+        System.out.println("Hello02Servlet正在服务...");
+    }
+}
 ```
 
 ## 上下文参数
 
 在Servlet初始化阶段获取web.xml的上下文参数。这个作用在 封装ViewBaseServlet中使用过。
+
+```xml
+<context-param>
+    <param-name>hello</param-name>
+    <param-value>world</param-value>
+</context-param>
+```
+
+```java
+@WebServlet("/hello03")
+public class Hello03Servlet extends GenericServlet {
+
+    @Override
+    public void service(ServletRequest servletRequest, ServletResponse servletResponse) throws ServletException, IOException {
+
+        //获取ServletContext有如下几种方式：
+        //1.通过request对象可以获取
+        //ServletContext context = servletRequest.getServletContext();
+        //2.通过session对象也可以获取
+        //HttpSession session = ((HttpServletRequest)servletRequest).getSession();
+        //ServletContext context = session.getServletContext();
+        //3.直接调用父类中的getServletContext()方法
+        //ServletContext context = getServletContext();
+        //4.通过ServletConfig对象也可以获取
+        ServletConfig config = getServletConfig();
+        ServletContext context = config.getServletContext();
+
+        String hello = context.getInitParameter("hello");
+        System.out.println("hello = " + hello);
+
+        System.out.println("Hello03Servlet正在服务...");
+    }
+}
+```
+

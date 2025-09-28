@@ -323,7 +323,28 @@ git update-index --assume-unchanged config.properties
 这样文件仍在仓库中，但 Git 假装它不会变。
 ```
 
+**git忽略仓库更新保存本地文件**
 
+远程仓库的 `jdbc.properties` 文件有更新，但你本地也修改过这个文件，如果直接拉取会导致本地修改丢失
+
+方式一：跳过某些文件更新（推荐）
+
+把文件加入 `.git/info/exclude` 或 `.gitignore`，然后让 Git 不再跟踪它
+
+```bash
+# 停止跟踪该文件
+git update-index --assume-unchanged 001-JavaSE/JavaWeb/IOTCards/resources/jdbc.properties
+```
+
+这样以后 `git pull` 时不会提示冲突，本地的 `jdbc.properties` 会一直保留。
+
+如果需要恢复跟踪：
+
+```ts
+git update-index --no-assume-unchanged 001-JavaSE/JavaWeb/IOTCards/resources/jdbc.properties
+```
+
+不行的话，把这个文件先移动到别处，然后删除这个文件，这时再拉一下仓库到本地，文件同步过来后，设置忽略本地改动，把这个文件再覆盖过去。
 
 ## Git 分支
 

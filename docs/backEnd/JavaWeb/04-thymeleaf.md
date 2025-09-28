@@ -713,6 +713,22 @@ request.setAttribute("anEmptyList", new ArrayList<>());
 
 OGNL：Object-Graph Navigation Language对象-图 导航语言，实际上调用的是这个对象的getter方法。
 
+```java
+Apache OGNL
+独立的表达式语言库，全称 Object Graph Navigation Language
+需要引入 ognl-x.x.x.jar 使用
+可以用 Ognl.getValue("xxx", context, root) 解析和执行表达式
+Struts2、Spring WebFlow 等框架早期广泛用它
+
+Thymeleaf 表达式 (有时也被叫作 OGNL)
+Thymeleaf 在 2.x 版本里，默认使用 OGNL 作为表达式解析器
+表达式写法类似 th:text="${user.name}"
+实际上底层就是在调用 OGNL 库去解析 ${...} 里的内容
+从 Thymeleaf 3.x 开始，已经换成了 Spring EL (SpEL) 作为默认表达式语言
+```
+
+
+
 **对象图的概念**
 
 从根对象触发，通过特定的语法，逐层访问对象的各种属性。

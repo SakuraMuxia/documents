@@ -273,37 +273,37 @@ export CATALINA_OPTS="-Xms512m -Xmx2g -XX:+UseG1GC"
 
 1. 进入 `bin` 目录：
 
-   ```
+   ```ts
    cd /usr/local/tomcat9/bin
    ```
 
 2. 新建文件：
 
-   ```
+   ```ts
    vi setenv.sh
    ```
 
 3. 写入 JVM 参数（例如内存配置）：
 
-   ```
+   ```ts
    export CATALINA_OPTS="-Xms512m -Xmx1024m -XX:PermSize=256m -XX:MaxPermSize=512m -XX:+UseG1GC"
    ```
 
 4. 保存后赋执行权限：
 
-   ```
+   ```ts
    chmod +x setenv.sh
    ```
 
 5. 重启 Tomcat：
 
-   ```
+   ```ts
    systemctl restart tomcat
    ```
 
    或者
 
-   ```
+   ```ts
    ./shutdown.sh
    ./startup.sh
    ```
@@ -690,9 +690,161 @@ JVM 内存回收（GC）
 
    - CPU、内存、磁盘 IO、网络。
 
-------
+### 解决办法
 
-✅ 总结：
+数据库连接池的问题，没有在代码中关闭连接
 
-- **短期快、长时间后变慢**，大概率是 **数据库连接池 / GC / 缓存失效** 的问题。
-- **先排查数据库连接池配置**（这是生产最常见的坑）。
+监控druid
+
+在web.xml配置
+
+```xml
+<!--数据库连接池-->
+    <!-- Druid StatViewServlet -->
+    <servlet>
+        <servlet-name>DruidStatView</servlet-name>
+        <servlet-class>com.alibaba.druid.support.http.StatViewServlet</servlet-class>
+        <init-param>
+            <param-name>loginUsername</param-name>
+            <param-value>admin</param-value>
+        </init-param>
+        <init-param>
+            <param-name>loginPassword</param-name>
+            <param-value>admin123</param-value>
+        </init-param>
+        <init-param>
+            <param-name>allow</param-name>
+            <param-value></param-value> <!-- 空表示允许所有IP -->
+        </init-param>
+    </servlet>
+
+    <servlet-mapping>
+        <servlet-name>DruidStatView</servlet-name>
+        <url-pattern>/druid/*</url-pattern>
+    </servlet-mapping>
+
+    <!-- Druid WebStatFilter -->
+    <filter>
+        <filter-name>DruidWebStatFilter</filter-name>
+        <filter-class>com.alibaba.druid.support.http.WebStatFilter</filter-class>
+        <init-param>
+            <param-name>exclusions</param-name>
+            <param-value>*.js,*.css,*.jpg,*.png,*.gif,/druid/*</param-value>
+        </init-param>
+    </filter>
+
+    <filter-mapping>
+        <filter-name>DruidWebStatFilter</filter-name>
+        <url-pattern>/*</url-pattern>
+    </filter-mapping>
+```
+
+访问
+
+```ts
+ http://localhost:8080/项目名/druid/ 
+```
+
+同时在 jdbc.properties中配置 jdbc
+
+```bash
+# 公共连接池参数
+db.POOL.INITIAL_SIZE=5
+db.POOL.MIN_IDLE=5
+db.POOL.MAX_ACTIVE=20
+db.POOL.MAX_WAIT=60000
+db.POOL.VALIDATION_QUERY=SELECT 1
+db.POOL.TEST_ON_BORROW=true
+db.POOL.TEST_WHILE_IDLE=true
+db.POOL.TIME_BETWEEN_EVICTION_RUNS_MILLIS=30000
+db.POOL.REMOVE_ABANDONED=true
+db.POOL.REMOVE_ABANDONED_TIMEOUT=180
+db.POOL.LOG_ABANDONED=true
+```
+
+优化 DBUtil.java
+
+```java
+package com.iot.yl.utils;
+
+import com.alibaba.druid.pool.DruidDataSource;
+
+import java.io.InputStream;
+import java.sql.*;
+import java.util.Properties;
+
+public class DButil {
+    // 两个数据库连接池
+    private static DruidDataSource dataSource1;
+    private static DruidDataSource dataSource2;
+
+    // 静态代码块，在类加载时读取配置
+    static {
+        try {
+            // 创建Properties Map集合类
+            Properties prop = new Properties();
+            // 获取当前类加载器，获取 jdbc的读取流
+            InputStream in = DButil.class.getClassLoader().getResourceAsStream("jdbc.properties");
+            // 加载配置文件
+            prop.load(in);
+
+            // db1 配置
+            dataSource1 = new DruidDataSource();
+            dataSource1.setDriverClassName(prop.getProperty("db1.DRIVER"));
+            dataSource1.setUrl(prop.getProperty("db1.URL"));
+            dataSource1.setUsername(prop.getProperty("db1.USER"));
+            dataSource1.setPassword(prop.getProperty("db1.PWD"));
+            configDataSource(dataSource1, prop);
+            // db2 配置
+            dataSource2 = new DruidDataSource();
+            dataSource2.setDriverClassName(prop.getProperty("db2.DRIVER"));
+            dataSource2.setUrl(prop.getProperty("db2.URL"));
+            dataSource2.setUsername(prop.getProperty("db2.USER"));
+            dataSource2.setPassword(prop.getProperty("db2.PWD"));
+            configDataSource(dataSource2, prop);
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    // 通用获取连接
+    public static Connection getConnection(DBType type) throws SQLException {
+        switch (type) {
+            case DB1: return dataSource1.getConnection();
+            case DB2: return dataSource2.getConnection();
+            default: throw new IllegalArgumentException("Unknown DBType");
+        }
+    }
+
+    // 关闭连接
+    public static void close(Connection conn, Statement stmt, ResultSet rs) {
+        try {
+            if (rs != null) rs.close();
+            if (stmt != null) stmt.close();
+            if (conn != null) conn.close(); // Druid 会自动把连接放回连接池
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+
+    // 配置数据库连接池
+    private static void configDataSource(DruidDataSource ds, Properties prop) {
+        ds.setInitialSize(Integer.parseInt(prop.getProperty("db.POOL.INITIAL_SIZE")));
+        ds.setMinIdle(Integer.parseInt(prop.getProperty("db.POOL.MIN_IDLE")));
+        ds.setMaxActive(Integer.parseInt(prop.getProperty("db.POOL.MAX_ACTIVE")));
+        ds.setMaxWait(Long.parseLong(prop.getProperty("db.POOL.MAX_WAIT")));
+        ds.setValidationQuery(prop.getProperty("db.POOL.VALIDATION_QUERY"));
+        ds.setTestOnBorrow(Boolean.parseBoolean(prop.getProperty("db.POOL.TEST_ON_BORROW")));
+        ds.setTestWhileIdle(Boolean.parseBoolean(prop.getProperty("db.POOL.TEST_WHILE_IDLE")));
+        ds.setTimeBetweenEvictionRunsMillis(
+                Long.parseLong(prop.getProperty("db.POOL.TIME_BETWEEN_EVICTION_RUNS_MILLIS")));
+        ds.setRemoveAbandoned(Boolean.parseBoolean(prop.getProperty("db.POOL.REMOVE_ABANDONED")));
+        ds.setRemoveAbandonedTimeout(
+                Integer.parseInt(prop.getProperty("db.POOL.REMOVE_ABANDONED_TIMEOUT")));
+        ds.setLogAbandoned(Boolean.parseBoolean(prop.getProperty("db.POOL.LOG_ABANDONED")));
+    }
+}
+
+```
+
