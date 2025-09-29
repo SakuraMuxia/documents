@@ -194,6 +194,65 @@ if (rs.next()) {
 
 ```
 
+setAutoCommit()
+
+```java
+作用：设置事务不自动提交，默认是自动提交事务；
+    
+参数：true或false
+    
+返回值：无
+    
+示例：
+// 设置不自动提交事务
+connection.setAutoCommit(false);
+```
+
+commit()
+
+```java
+作用：提交事务
+    
+参数：无
+    
+返回值：无
+    
+示例：
+// 提交事务
+connection.commit();
+```
+
+rollback()
+
+```java
+作用：回滚事务；
+    
+参数：无
+    
+返回值：无
+    
+示例：
+// 获取连接
+Connection conn = DriverManager.getConnection(url, user, password);
+// 关闭自动提交（默认是 true）
+conn.setAutoCommit(false);
+// 执行多条 SQL
+Statement stmt = conn.createStatement();
+stmt.executeUpdate("INSERT INTO fruit (fname, price) VALUES ('苹果', 3)");
+stmt.executeUpdate("UPDATE account SET balance = balance - 100 WHERE id = 1");
+// 提交事务
+conn.commit();
+// 回滚事务
+try {
+    conn.commit();
+} catch (Exception e) {
+    conn.rollback();
+}
+// 释放资源
+stmt.close();
+conn.close();
+```
+
 
 
 ### Statement接口
@@ -2344,3 +2403,6 @@ ThreadLocal用于保存某个线程共享变量，
 3、ThreadLocal.remove: 移除ThreadLocal中当前线程共享变量的值。
 ```
 
+## JDBC事务
+
+见 Filter 中的事务管理

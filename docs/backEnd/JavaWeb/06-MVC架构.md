@@ -462,8 +462,6 @@ public class Main {
 }
 ```
 
-
-
 ## 封装工厂类
 
 为了解决耦合的问题：可以看出Service层需要Dao层实例对象操作，Servlet层需要Service层的实例操作，封装BeanFactory工厂类来创建实例，解耦合，让所有层与BeanFactory工厂类建立联系，从而降低耦合度。

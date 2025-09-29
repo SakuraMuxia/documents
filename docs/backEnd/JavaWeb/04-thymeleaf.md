@@ -1121,6 +1121,14 @@ java -cp .;lib/my-utils.jar Main
 
 7、把这个Jar包导入别的项目中，添加到library中，就可以使用
 
+**使用第三方Jar包的方式导出Jar包；**
+
+```java
+handy-export-jar 包进行导出；
+```
+
+
+
 ## 各自作用
 
 **TomCat Servlet Thymeleaf 的各自作用**

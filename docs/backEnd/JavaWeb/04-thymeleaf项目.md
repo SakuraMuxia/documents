@@ -3247,7 +3247,7 @@ public class DispatcherServlet extends ViewBaseServlet {
 
 同时删除多余参数，取消继承Servlet类，取消使用HttpReq之类的参数。
 
-可以使用 javaBean，ONGL工具类，对方法中的参数进一步的封装。
+可以使用 javaBean，ONGL工具类，对方法中的参数进一步的封装（未实现）。
 
 ```java
 package com.fruit.yuluo.controller;
@@ -3274,45 +3274,26 @@ public class FruitController{
     private FruitService fruitService;
 
     // list方法
-    protected String list(HttpServletRequest req){
-        // 获取session对象
-        HttpSession session = req.getSession();
-        // 定义关键字
-        String keyword = "";
-        // 定义前端的操作标记
-        String operate = req.getParameter("oper");
-        // 定义前端页码和每页大小
-        Integer pageNo = 1;
-        Integer pageSize = 5;
-        Integer pageCount = 0;
-
-        // 搜索操作
-        if ("search".equals(operate)){
-            // 获取请求参数中关键字
-            String keywordStr = req.getParameter("keyword");
-            if (StringUtils.isNotEmpty(keywordStr)){
-                keyword = keywordStr;
-            }
-            // 把关键字存储到session中,再会话中始终存在
+    protected String list(HttpServletRequest req,HttpSession session,String operate,String keyword,Integer pageNo,Integer pageSize){
+        if(StringUtils.isEmpty(keyword)){
+            keyword = "" ;
+        }
+        if (pageNo == null){
+            pageNo = 1;
+        }
+        if (pageSize == null){
+            pageSize = 5;
+        }
+        // 搜索逻辑判断，非空且是search操作
+        if(StringUtils.isNotEmpty(operate) && "search".equals(operate)){
             session.setAttribute("keyword",keyword);
-        }else{ // 下一页操作
+        }else{
             Object keywordObj = session.getAttribute("keyword");
-            // 如果不为空
-            if (keywordObj != null){
-                // 强转为String类型，并复制给keyword
-                keyword = (String) keywordObj;
+            if(keywordObj != null){
+                keyword = (String)keywordObj;
             }
         }
-        // 获取前端传来的页码
-        String pageNoStr = req.getParameter("pageNo");
-        String pageSizeStr = req.getParameter("pageSize");
-        // 判断pageNoStr和pageSizeStr 不能为空且不能为null
-        if (StringUtils.isNotEmpty(pageNoStr)){
-            pageNo = Integer.parseInt(pageNoStr);
-        }
-        if (StringUtils.isNotEmpty(pageSizeStr)){
-            pageSize = Integer.parseInt(pageSizeStr);
-        }
+
         // 查询数据库，使用service层实现
         List<Fruit> fruitList = fruitService.getFruitList(keyword, pageNo, pageSize);
         Integer totalNum = fruitService.getTotalNum(keyword);
@@ -3337,21 +3318,16 @@ public class FruitController{
 
         // 使用thymeleaf渲染,渲染fruitList页面,在ViewBaseServlet初始化时配置了，读取web.xml中的配置
         // super.processTemplate("fruitList",req,resp);
-        // 使用中央Servlet控制器处理视图转发
-        return "list";
+        // 使用中央Servlet控制器处理视图转发，跳转到 fruitList.html 页面
+        return "fruitList";
     }
 
     // add 方法
-    protected String add(HttpServletRequest req){
-        // 获取参数
-        String fname = req.getParameter("fname");
-        String price = req.getParameter("price");
+    protected String add(String fname,String price,Integer count,String remark){
         // 转为大数
         BigDecimal bigPrice = new BigDecimal(price.trim());
-        Integer fcount = Integer.parseInt(req.getParameter("count"));
-        String remark = req.getParameter("remark");
         // 调用service
-        Fruit fruit = new Fruit(fname,bigPrice,fcount,remark);
+        Fruit fruit = new Fruit(fname,bigPrice,count,remark);
         fruitService.addFruit(fruit);
         // 重定向到列表请求
         // resp.sendRedirect(REQ_DO);
@@ -3360,33 +3336,25 @@ public class FruitController{
     }
 
     // edit 方法
-    protected String edit(HttpServletRequest req){
-        // 接收请求传来的参数
-        String idStr = req.getParameter("id");
+    protected String edit(HttpServletRequest req,Integer id){
         // 判断条件,不能为空且不能不传
-        if(idStr !=null && !"".equals(idStr)){
-            // 转为包装类,同时强转为Integer类
-            Integer id = Integer.parseInt(idStr);
+        if(id != null){
             // 使用service层
             Fruit fruit = fruitService.getFruitById(id);
             // 将fruit放在request请求域中
             req.setAttribute("fruit",fruit);
             // System.out.println("fruit = " + fruit);
-            return "edit";
+            // 跳转到 editFruit.html 页面
+            return "editFruit";
         }
         return null;
     }
 
     // update 方法
-    protected String update(HttpServletRequest req){
-        // 获取Post请求中，请求体中的数据
-        String fname = req.getParameter("fname");
-        String price = req.getParameter("price");
+    protected String update(Integer id,String fname,String price,Integer count,String remark){
+
         // 转为大数
         BigDecimal bigPrice = new BigDecimal(price.trim());
-        Integer count = Integer.parseInt(req.getParameter("count"));
-        String remark = req.getParameter("remark");
-        Integer id = Integer.parseInt(req.getParameter("id"));
         // 创建水果对象
         Fruit fruit = new Fruit(id,fname,bigPrice,count,remark);
         // 更新数据库数据
@@ -3398,9 +3366,7 @@ public class FruitController{
     }
 
     // del 方法
-    protected String del(HttpServletRequest req){
-        // 解析请求中的id
-        Integer id = Integer.parseInt(req.getParameter("id"));
+    protected String del(Integer id){
         // 调用删除
         fruitService.delFruit(id);
         // 重定向 到列表请求
@@ -3410,25 +3376,156 @@ public class FruitController{
 
 ```
 
-进一步封装版本
-
-```java
-首先需要导包 ongl的jdk包
-```
-
-```java
-
-```
-
 改装 DispatcherServlet 类，对视图进行统一处理
 
+需要现在 编辑器中配置 编译时显示参数名字 `-parameters`
+
+> idea的菜单file->settings->builder->compiler->java compiler -> additional command line ...
+>
+> 设置完成之后需要把out目录重新删除编译一次。
+
 ```java
+package com.fruit.yuluo.myssm.servlet;
+
+import com.fruit.yuluo.ioc.BeanFactory;
+import com.fruit.yuluo.ioc.impl.ClassPathXmlApplicationContext;
+import com.fruit.yuluo.servlet.ViewBaseServlet;
+import com.fruit.yuluo.utils.StringUtils;
+
+import javax.servlet.ServletException;
+import javax.servlet.annotation.WebServlet;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+import java.io.IOException;
+import java.lang.reflect.Method;
+import java.lang.reflect.Parameter;
+
+@WebServlet("*.do")
+public class DispatcherServlet extends ViewBaseServlet {
+    // 创建 bean 实例
+    private BeanFactory beanFactory = new ClassPathXmlApplicationContext();
+    @Override
+    protected void service(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
+        // 统一设置请求头
+        req.setCharacterEncoding("UTF-8");
+        // 获取URI
+        // http://localhost/fruit.do?id=9&fname=apple&price=10
+        // uri:/fruit.do 截取字符串得到 fruit.do
+        // String uri = req.getRequestURI().substring(7);
+        String servletPath = req.getServletPath(); // 返回 "/fruit.do"
+        String uri = servletPath.substring(1, servletPath.lastIndexOf(".do"));
+        String oper = req.getParameter("oper");
+        // 截取字符串 得到fruit
+        // uri = uri.substring(0, endIndex);
+        System.out.println("uri = " + uri);
+        // 根据 得到的 请求 fruit 从 IOC容器中 取出bean实例
+        // 需要在bean.xml中配置fruit的id,uri假如是 fruit，对应是 FruitController的实例
+        /*
+        <bean id="fruit" class="com.fruit.yuluo.controller.FruitController">
+            <property name="fruitService" ref="fruitService"></property>
+        </bean>
+        * */
+        Object bean = beanFactory.getBean(uri);
+        
+        // 这里的bean是一个FruitController对象 @xxzz,且 @xxzz.fruitService = new fruitServiceImpl
+        // 默认不传操作是列表功能
+        if (StringUtils.isEmpty(oper)){
+            oper = "list";
+        }
+        // 通过反射,获取bean实例 控制器实例 的Class对象
+        Class beanClass = bean.getClass();
+        // 获取 控制器实例中的方法
+        // 由于 方法中参数类型数量不同，这里使用获取方法列表
+        Method[] methods = beanClass.getDeclaredMethods();
+        for (int i = 0; i < methods.length; i++) {
+            Method method = methods[i];
+            // 判断操作名与方法名一致
+            if (oper.equals(method.getName())){
+                try {
+                    // 调用控制器中的方法
+                    method.setAccessible(true);
+                    // 获取方法列表
+                    Parameter[] parameters = method.getParameters();
+                    // 创建一个参数结果的列表
+                    Object[] parameterValueArr = new Object[parameters.length];
+                    // 遍历
+                    for (int j = 0;j<parameterValueArr.length;j++){
+                        // 获取参数对象
+                        Parameter parameter = parameters[j];
+                        // 获取参数名字-需要在编辑器中配置 -parameters
+                        String parameterName = parameter.getName();
+                        // java.lang.Integer;typeName为Integer
+                        String typeName = parameter.getType().getName();
+                        // 设置参数值
+                        Object parameterValue = null;
+                        // 分支结构
+                        switch (parameterName){
+                            case "session":
+                                parameterValue = req.getSession(); // 值是一个session对象
+                                break;
+                            case "req":
+                                parameterValue = req;
+                                break;
+                            case "resp":
+                                parameterValue = resp;
+                                break;
+                            default:
+                                // 默认情况 从 请求域中获取到的 基本数据类型
+                                String reqParameter = req.getParameter(parameterName);
+                                //此处我们不考虑一个名称对应多个值的情况
+                                //http://localhost/fruit.do?hobby=football&hobby=basketball&hobby=pingpong
+                                //String[] hobbies = request.getParameterValues("hobby");
+                                if (StringUtils.isNotEmpty(reqParameter)){
+                                    switch (typeName){
+                                        case "java.lang.Integer":
+                                            parameterValue = Integer.parseInt(reqParameter);
+                                            break;
+                                        case "java.lang.Double":
+                                            parameterValue = Double.parseDouble(reqParameter);
+                                            break;
+                                        default:
+                                            parameterValue = reqParameter;
+                                            break;
+                                    }
+                                }
+                                break;
+
+                        }
+                        // 存放参数值
+                        parameterValueArr[j] = parameterValue;
+                    }
+                    for (Object o : parameterValueArr) {
+                        System.out.println("o = " + o);
+                    }
+                    // 执行方法
+                    Object returnObj = method.invoke(bean, parameterValueArr);
+                    // 处理视图转发
+                    if (returnObj != null){
+                        // 强转为String类型
+                        String returnStr = (String) returnObj;
+                        // 判断
+                        if (returnStr.startsWith("redirect:")){
+                            // 获取后边的字符串
+                            returnStr = returnStr.substring("redirect:".length());
+                            // 重定向
+                            resp.sendRedirect(returnStr);
+                        }else {
+                            // 转发页面
+                            processTemplate(returnStr,req,resp);
+                        }
+                    }
+                    // 结束循环
+                    return ;
+
+                } catch (Exception e) {
+                    e.printStackTrace();
+                    throw new RuntimeException("未找到"+oper+"方法");
+                }
+            }
+        }
+    }
+}
 
 ```
 
-进一步封装版本后的DispatcherServlet类
-
-```java
-
-```
-
+使用这种方法，一定要注意，前端HTML页面中的参数要和后端控制器中的方法中的参数名保持一致，否则会获取不到数据，是null。
