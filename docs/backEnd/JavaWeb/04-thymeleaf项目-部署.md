@@ -1,4 +1,4 @@
-# Web项目
+# thymeleaf项目-部署
 
 基于传统 Tomcat + Servlet 的查询物联网卡的 Web 项目
 

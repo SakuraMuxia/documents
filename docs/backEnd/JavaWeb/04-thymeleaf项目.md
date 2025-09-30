@@ -1,4 +1,4 @@
-# Thymeleaf案例
+# Thymeleaf项目
 
 ## 水果案例
 
