@@ -1,4 +1,4 @@
-# Thymeleaf项目
+# ProjectThy-1
 
 ## 水果案例
 
@@ -2545,7 +2545,6 @@ public interface FruitService {
 package com.fruit.yuluo.service.impl;
 
 import com.fruit.yuluo.dao.FruitDao;
-import com.fruit.yuluo.dao.impl.FruitDaoImpl;
 import com.fruit.yuluo.pojo.Fruit;
 import com.fruit.yuluo.service.FruitService;
 
@@ -2553,7 +2552,9 @@ import java.util.List;
 
 public class FruitServiceImpl implements FruitService {
     // 创建FruitDao对象
-    FruitDao fruitDao = new FruitDaoImpl();
+    // 经过BeanFactory自动注入后，
+    // 现在，FruitServiceImpl 的 fruitDao 成员已经不是 null，而是一个真正可用的 FruitDaoImpl 实例了。
+    private FruitDao fruitDao;
 
     @Override
     public List<Fruit> getFruitList(String keyword, Integer pageNo, Integer pageSize) {
@@ -2579,17 +2580,17 @@ public class FruitServiceImpl implements FruitService {
 
     @Override
     public void updateFruit(Fruit fruit) {
-
+        fruitDao.updateFruit(fruit);
     }
 
     @Override
     public void delFruit(Integer id) {
-
+        fruitDao.delFruit(id);
     }
 
     @Override
     public Fruit getFruitById(Integer id) {
-        return null;
+        return fruitDao.getFruitById(id);
     }
 }
 

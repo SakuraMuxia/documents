@@ -470,6 +470,64 @@ public class Main {
 
 Ioc类时于 类似 Spring 的 `ApplicationContext`，根据`bean.xml` 的配置。负责 **创建对象实例**（反射），负责 **注入依赖**（属性赋值）、类似一个工厂，负责生产实例。
 
+### IOC思想
+
+IoC 的思想：对象不是自己创建的，而是“被动地被容器注入”。
+
+传统写法：
+
+```java
+FruitDao fruitDao = new FruitDaoImpl();
+```
+
+👉 程序员自己 new 对象。
+
+IoC 写法：
+
+```java
+private FruitDao fruitDao;
+```
+
+👉 不再手动 new，容器（如 BeanFactory）帮你创建并注入。
+
+BeanFactory 的作用
+
+假设你有一个类似这样的简单 IoC 容器（示例伪代码）：
+
+```java
+public class BeanFactory {
+    private static Map<String, Object> beanMap = new HashMap<>();
+
+    static {
+        beanMap.put("fruitDao", new FruitDaoImpl());
+        beanMap.put("fruitService", new FruitServiceImpl());
+    }
+
+    public static Object getBean(String name) {
+        return beanMap.get(name);
+    }
+}
+
+```
+
+这个工厂一启动就创建好所有 Bean，并保存到 `beanMap` 里。
+
+ 而 `FruitServiceImpl` 中的 `fruitDao` 成员，通常是在 **实例化后由 IoC 自动设置的**。
+
+自动注入过程（可能由反射完成）
+
+```java
+FruitServiceImpl fruitService = (FruitServiceImpl) BeanFactory.getBean("fruitService");
+
+// IoC 容器启动后会反射性地为 fruitService 注入 fruitDao
+Field daoField = FruitServiceImpl.class.getDeclaredField("fruitDao");
+daoField.setAccessible(true);
+daoField.set(fruitService, BeanFactory.getBean("fruitDao"));
+
+```
+
+这段逻辑通常在框架的“初始化容器”代码中执行，所以你**不会直接在业务类中看到赋值操作**。但实际上它确实发生过。
+
 ### 封装BeanFactory工厂类
 
 配置xml文件
@@ -583,6 +641,7 @@ public class ClassPathXmlApplicationContext implements BeanFactory {
 
                 }
             }
+            // 手写 IoC 容器中的“自动注入依赖”核心逻辑
             // 重新遍历 beanNodeList 节点
             for (int i = 0; i < beanNodeList.getLength(); i++) {
                 Node beanNode = beanNodeList.item(i);

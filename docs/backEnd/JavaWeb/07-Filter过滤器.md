@@ -25,7 +25,11 @@ JavaWeb基本工作过程：当请求到来时，执行顺序。
 ```java
 // 初始化方法
 init(FilterConfig filterConfig)
-
+public void init(FilterConfig filterConfig) throws ServletException
+// 作用：在过滤器创建时执行一次，用于完成初始化操作，例如读取配置参数、建立资源连接等。
+// 相当于 Servlet 的 init() 方法。
+    
+    
 // 过滤器方法    
 doFilter(ServletRequest req,ServletRespon resp,FilterChain chain)
 
@@ -36,42 +40,82 @@ destory()
 init()
 
 ```java
-作用：
+作用：在过滤器创建时执行一次，用于完成初始化操作，例如读取配置参数、建立资源连接等
     
-参数：
+参数：FilterConfig filterConfig
+    由容器传入，包含当前 Filter 的配置信息，可以通过它读取
+    在 web.xml 中配置的初始化参数；
+	当前 Filter 的名称；
+	ServletContext 对象
     
-返回值：
+返回值：无（void）
     
 示例：
+@Override
+public void init(FilterConfig filterConfig) throws ServletException {
+    System.out.println("Filter 初始化...");
+    String encoding = filterConfig.getInitParameter("encoding");
+    System.out.println("初始化参数 encoding = " + encoding);
+}
 ```
 
 doFilter()
 
 ```java
-作用：
+public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain)
+        throws IOException, ServletException
+    
+作用：是过滤器的核心方法，在每次请求到达目标资源（如 Servlet、JSP）之前都会执行;
+	你可以在这里：
+        拦截请求（如登录校验、权限控制）；
+        修改请求或响应；
+        实现日志、编码统一处理；
+        或在调用目标资源前后添加逻辑。
     
 参数：
+    ServletRequest request：请求对象。
+    ServletResponse response：响应对象。
+    FilterChain chain：过滤器链对象，用于将请求传递给下一个过滤器或目标资源。
     
-返回值：
+返回值：无（void）
     
 示例：
+@Override
+public void doFilter(ServletRequest req, ServletResponse resp, FilterChain chain)
+        throws IOException, ServletException {
+
+    System.out.println("请求进入过滤器...");
+
+    // 设置编码（常见示例）
+    req.setCharacterEncoding("UTF-8");
+    resp.setCharacterEncoding("UTF-8");
+
+    // 放行请求，交给下一个过滤器或目标 Servlet
+    chain.doFilter(req, resp);
+
+    System.out.println("响应返回过滤器...");
+}
+
+注意：如果不调用 chain.doFilter(req, resp)，请求就不会继续传递，相当于被当前 Filter 拦截了
 ```
 
 destory()
 
 ```java
-作用：
+作用：在过滤器销毁前调用一次，通常用于资源清理，如关闭连接、释放内存等
     
-参数：
+参数：无。
     
-返回值：
+返回值：无（void）。
     
 示例：
+@Override
+public void destroy() {
+    System.out.println("Filter 被销毁，释放资源...");
+}
 ```
 
-示例
-
-**Filter配置**
+### Filter配置方式
 
 两种方式：
 
@@ -81,58 +125,179 @@ destory()
 // 第二种可以使用XML配置
 ```
 
+**方式一：注解（简便写法）**
+
+```java
+import javax.servlet.annotation.WebFilter;
+import javax.servlet.*;
+
+@WebFilter("/*")  // 过滤所有请求
+public class EncodingFilter implements Filter {
+    // 实现上面三个方法
+}
+```
+
+**方式二：`web.xml` 配置（推荐）**
+
+```xml
+<filter>
+    <filter-name>EncodingFilter</filter-name>
+    <filter-class>com.example.EncodingFilter</filter-class>
+    <init-param>
+        <param-name>encoding</param-name>
+        <param-value>UTF-8</param-value>
+    </init-param>
+</filter>
+
+<filter-mapping>
+    <filter-name>EncodingFilter</filter-name>
+    <url-pattern>/*</url-pattern>
+</filter-mapping>
+
+```
+
 
 
 ### FilterConfig
 
-类似于ServletConfig，作用：用于读取初始化信息。
+包名：javax.servlet.FilterConfig
+
+类似于 `ServletConfig`，用于读取过滤器的初始化参数和获取 `ServletContext` 对象。
 
 **常用方法**
 
+```java
+// 获取过滤器的名称
+String getFilterName()
+
+// 获取指定的初始化参数值
+String getInitParameter(String name)
+
+// 获取所有初始化参数的名称
+Enumeration<String> getInitParameterNames()
+
+// 获取 ServletContext 对象
+ServletContext getServletContext()
 ```
-作用：
-    
-参数：
-    
-返回值：
-    
+
+| 方法                            | 作用                       | 参数   | 返回值                |
+| ------------------------------- | -------------------------- | ------ | --------------------- |
+| `getFilterName()`               | 获取过滤器名称             | 无     | 过滤器名（字符串）    |
+| `getInitParameter(String name)` | 根据参数名获取初始化参数值 | 参数名 | 参数值                |
+| `getInitParameterNames()`       | 获取所有初始化参数名称     | 无     | 枚举对象              |
+| `getServletContext()`           | 获取全局上下文对象         | 无     | `ServletContext` 对象 |
+
 示例：
+
+```java
+@WebFilter("/demo")
+public class DemoFilter implements Filter {
+    @Override
+    public void init(FilterConfig config) throws ServletException {
+        System.out.println("Filter名称：" + config.getFilterName());
+        String value = config.getInitParameter("encoding");
+        System.out.println("初始化参数 encoding：" + value);
+    }
+
+    @Override
+    public void doFilter(ServletRequest req, ServletResponse resp, FilterChain chain)
+            throws IOException, ServletException {
+        chain.doFilter(req, resp);
+    }
+
+    @Override
+    public void destroy() {}
+}
+
 ```
 
 
 
 ### FilterChain
 
+作用：用于控制过滤器链的调用流程。通过 `chain.doFilter(request, response)` 将请求交给下一个过滤器或目标资源（Servlet）。
+
 **常用方法**
 
 doFilter()
 
 ```java
-作用：
+void doFilter(ServletRequest request, ServletResponse response)
     
-参数：
+作用：用于控制过滤器链的调用流程。
     
-返回值：
+参数：请求与响应对象
+    
+返回值：无
     
 示例：
+    
+@WebFilter("/*")
+public class LoginCheckFilter implements Filter {
+    @Override
+    public void doFilter(ServletRequest req, ServletResponse resp, FilterChain chain)
+            throws IOException, ServletException {
+        System.out.println("进入过滤器 A");
+        chain.doFilter(req, resp); // 放行
+        System.out.println("离开过滤器 A");
+    }
+}
+
 ```
 
 ### ThreadLocal类
 
-**作用：**
+**作用：**为每个线程提供独立的变量副本，避免多线程间共享变量导致的冲突。常用于在过滤器或拦截器中保存用户信息、数据库连接等。
 
 **常用方法：**
 
-set()
+set(T value)
 
 ```java
-
+作用：为当前线程设置一个线程独立的变量值。
+    每个线程都有自己的 ThreadLocal 存储副本，互不影响。
+    
+参数：value —— 要为当前线程存储的值。
+    
+返回值：无（void）。
+    
+示例：
+ThreadLocal<String> threadLocal = new ThreadLocal<>();
+threadLocal.set("Hello Thread A"); // 当前线程独有的值
 ```
 
 get()
 
 ```java
+作用：获取当前线程在 ThreadLocal 中存储的值。
+    如果当前线程从未设置过值，则返回 null。
+    
+参数：无。
+    
+返回值：当前线程对应的值（类型为 T）。
+    
+示例：
+    
+ThreadLocal<String> threadLocal = new ThreadLocal<>();
+threadLocal.set("Data for current thread");
+System.out.println(threadLocal.get()); // 输出：Data for current thread
+```
 
+remove()
+
+```java
+作用：移除当前线程在 ThreadLocal 中存储的值，防止内存泄漏。
+    通常在线程使用完 ThreadLocal 后调用。
+    
+参数：无。
+    
+返回值：无。
+    
+示例：
+ThreadLocal<String> threadLocal = new ThreadLocal<>();
+threadLocal.set("Temporary data");
+threadLocal.remove(); // 删除当前线程的数据
+System.out.println(threadLocal.get()); // 输出：null
 ```
 
 
@@ -197,8 +362,6 @@ TransactionManager 类的理解和作用：
     作用：用于管理事务
 ```
 
-
-
 ## Filter应用
 
 ### 抽离操作
@@ -257,6 +420,10 @@ TransactionManager 类的理解和作用：
 BaseDao中的获取连接的方法，通过调用 TransActionManager 中的获取连接的方法实现。
 关闭方法不关闭Connect连接，关闭其他两个，因为同一个事务不同的操作，使用的是同一个连接。
 ```
+
+## 统一异常处理
+
+目的是：在通用代码中，把编译型的异常，转换位运行时异常，ssm包中不再有try catch，不用担心异常处理了。
 
 **🔥潜在问题**：内部组件trycatch到的问题，打印出来了，但在外部的组件就catch不到了；
 
@@ -346,12 +513,3 @@ throw 是实际动作，立即抛出异常对象。
 | 是否中断程序       | ❌ 不会                        | ✅ 会（若未捕获）       |
 | 常用于             | 受检异常（Checked Exception） | 实际运行时报错         |
 | 是否强制调用者处理 | ✅ 是（受检异常）              | ❌ 否（运行时异常）     |
-
-### 统一异常处理
-
-目的是：在通用代码中，把编译型的异常，转换位运行时异常；
-
-```java
-
-```
-
