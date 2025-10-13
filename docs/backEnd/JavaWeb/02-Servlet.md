@@ -799,6 +799,118 @@ public class MyServletConfigServlet extends GenericServlet {
 
 ```
 
+### ServletContextEvent类
+
+包名：javax.servlet
+
+作用：用于监听 **整个 Web 应用的生命周期事件**（即：启动与销毁）。
+
+常用方法：
+
+| 方法                  | 说明                                                        |
+| --------------------- | ----------------------------------------------------------- |
+| `getServletContext()` | 获取当前 Web 应用的 `ServletContext` 对象（全局上下文环境） |
+
+示例1：创建监听器
+
+```java
+import javax.servlet.ServletContextEvent;
+import javax.servlet.ServletContextListener;
+import javax.servlet.annotation.WebListener;
+
+@WebListener // 或者在 web.xml 中配置
+public class AppContextListener implements ServletContextListener {
+
+    // Web 应用启动时调用（ServletContext 初始化）
+    @Override
+    public void contextInitialized(ServletContextEvent sce) {
+        System.out.println("🌟 Web 应用启动中...");
+
+        // 获取 ServletContext 对象
+        var context = sce.getServletContext();
+
+        // 示例：读取 web.xml 中的参数
+        String configPath = context.getInitParameter("configPath");
+        System.out.println("配置文件路径: " + configPath);
+
+        // 示例：保存一些全局数据
+        context.setAttribute("onlineCount", 0);
+    }
+
+    // Web 应用关闭时调用（ServletContext 销毁）
+    @Override
+    public void contextDestroyed(ServletContextEvent sce) {
+        System.out.println("🧹 Web 应用关闭，开始清理资源...");
+        
+        // 执行清理逻辑，例如关闭数据库连接池
+        // DataSource.close() 等操作
+    }
+}
+
+```
+
+配置xml
+
+```xml
+<listener>
+    <listener-class>com.example.listener.AppContextListener</listener-class>
+</listener>
+
+<context-param>
+    <param-name>configPath</param-name>
+    <param-value>/WEB-INF/config.properties</param-value>
+</context-param>
+
+```
+
+示例2：在应用启动时加载配置文件
+
+```java
+import javax.servlet.ServletContextEvent;
+import javax.servlet.ServletContextListener;
+
+public class MyContextListener implements ServletContextListener {
+    @Override
+    public void contextInitialized(ServletContextEvent sce) {
+        System.out.println("Web 应用启动！");
+        var context = sce.getServletContext();
+    	try (InputStream in = context.getResourceAsStream("/WEB-INF/config.properties")) {
+            Properties props = new Properties();
+            props.load(in);
+            context.setAttribute("config", props);
+            System.out.println("配置加载成功！");
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    @Override
+    public void contextDestroyed(ServletContextEvent sce) {
+        System.out.println("Web 应用关闭！");
+        var context = sce.getServletContext();
+        ExecutorService pool = (ExecutorService) context.getAttribute("threadPool");
+        if (pool != null && !pool.isShutdown()) {
+            pool.shutdown();
+        }
+        System.out.println("线程池关闭完成");
+    }
+}
+
+```
+
+配置
+
+```xml
+<listener>
+    <listener-class>com.example.listener.AppContextListener</listener-class>
+</listener>
+
+<context-param>
+    <param-name>configPath</param-name>
+    <param-value>/WEB-INF/config.properties</param-value>
+</context-param>
+```
+
 
 
 ## Servlet基本使用

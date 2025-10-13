@@ -315,6 +315,76 @@ System.out.println(threadLocal.get()); // 输出：null
     Servlet销毁 -> Filter销毁
 ```
 
+## 匹配规则
+
+ **四种匹配规则**
+
+精确匹配
+
+指定被拦截资源的完整路径：
+
+```xml
+<!-- 配置Filter要拦截的目标资源 -->
+<filter-mapping>
+    <!-- 指定这个mapping对应的Filter名称 -->
+    <filter-name>FilterDemo01</filter-name>
+
+    <!-- 通过请求地址模式来设置要拦截的资源 -->
+    <url-pattern>/demo01</url-pattern>
+</filter-mapping>
+```
+
+上述例子表示要拦截映射路径为`/demo01`的这个资源
+
+**模糊匹配**
+
+相比较精确匹配，使用模糊匹配可以让我们创建一个Filter就能够覆盖很多目标资源，不必专门为每一个目标资源都创建Filter，提高开发效率。
+
+在我们配置了url-pattern为/user/*之后，请求地址只要是/user开头的那么就会被匹配。
+
+```xml
+<filter-mapping>
+    <filter-name>Target02Filter</filter-name>
+
+    <!-- 模糊匹配：前杠后星 -->
+    <!--
+        /user/demo01
+        /user/demo02
+        /user/demo03
+		/demo04
+    -->
+    <url-pattern>/user/*</url-pattern>
+</filter-mapping>
+```
+
+极端情况：/*匹配所有请求
+
+**扩展名匹配**
+
+```xml
+<filter>
+    <filter-name>Target04Filter</filter-name>
+    <filter-class>com.atguigu.filter.filter.Target04Filter</filter-class>
+</filter>
+<filter-mapping>
+    <filter-name>Target04Filter</filter-name>
+    <url-pattern>*.png</url-pattern>
+</filter-mapping>
+```
+
+上述例子表示拦截所有以`.png`结尾的请求
+
+**匹配Servlet名称**
+
+```xml
+<filter-mapping>
+    <filter-name>Target05Filter</filter-name>
+
+    <!-- 根据Servlet名称匹配 -->
+    <servlet-name>Target01Servlet</servlet-name>
+</filter-mapping>
+```
+
 ## 过滤器链
 
 初始化时：过滤器链的执行顺序：
@@ -324,6 +394,25 @@ System.out.println(threadLocal.get()); // 输出：null
 ```
 
 请求到来时：过滤器链的执行顺序：
+
+**过滤器链的顺序**
+
+过滤器链中每一个Filter执行的顺序是由web.xml中filter-mapping配置的顺序决定的。
+
+```xml
+<filter-mapping>
+    <filter-name>TargetChain03Filter</filter-name>
+    <url-pattern>/Target05Servlet</url-pattern>
+</filter-mapping>
+<filter-mapping>
+    <filter-name>TargetChain02Filter</filter-name>
+    <url-pattern>/Target05Servlet</url-pattern>
+</filter-mapping>
+<filter-mapping>
+    <filter-name>TargetChain01Filter</filter-name>
+    <url-pattern>/Target05Servlet</url-pattern>
+</filter-mapping>
+```
 
 ![image-20250929145741007](https://2216847528.oss-cn-beijing.aliyuncs.com/asset/image-20250929145741007.png)
 
@@ -378,24 +467,276 @@ TransactionManager 类的理解和作用：
 
 ```
 
+### 过滤非法字符
+
+实现CommentServlet发布评论内容的时候将评论内容中的非法字符替换成*；
+
+将固定的非法字符串替换成从illegal.txt文件中读取非法字符串；
+
+IllegalFilter的代码 V2版本
+
+```java
+public class IllegalCharFilter implements Filter {
+    
+    private List<String> illegalTextList = new ArrayList<>();
+    @Override
+    public void destroy() {
+    }
+
+    @Override
+    public void doFilter(ServletRequest req, ServletResponse resp, FilterChain chain) throws ServletException, IOException {
+        //使用动态代理改变req对象的getParameter方法
+        HttpServletRequest request = (HttpServletRequest) req;
+        Class<? extends HttpServletRequest> clazz = request.getClass();
+        HttpServletRequest proxyRequest = (HttpServletRequest) Proxy.newProxyInstance(clazz.getClassLoader(), clazz.getInterfaces(), new InvocationHandler() {
+            @Override
+            public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
+                //改变getParameter()方法
+                if(method.getName().equals("getParameter")){
+                    //1. 调用原本的getParameter()方法，先获取到请求参数
+                    String oldValue = (String) method.invoke(request, args);
+                    //2. 判断oldValue中是否包含非法字符，如果包含则将非法字符替换成*
+                    for (String illegalText : illegalTextList) {
+                        if(oldValue.contains(illegalText)){
+                            //非法字符串有几个字符就生成几个*
+                            String star = "";
+                            for (int i = 0; i < illegalText.length(); i++) {
+                                star += "*";
+                            }
+                            //然后使用star替换oldValue中的非法字符串
+                            oldValue = oldValue.replace(illegalText,star);
+                        }
+                    }
+                    return oldValue;
+                }
+                return method.invoke(request,args);
+            }
+        });
+
+        //放行过去的请求，一定要是代理请求
+        chain.doFilter(proxyRequest, resp);
+    }
+
+    @Override
+    public void init(FilterConfig config) throws ServletException {
+        //在这里读取illegal.txt文件,就只需要在项目部署的时候读取一次
+        //将字节输入流进行包装--->InputStreamReader()----->BufferedReader()---->readLine
+        BufferedReader bufferedReader = null;
+        try {
+            bufferedReader = new BufferedReader(new InputStreamReader(IllegalCharFilter.class.getClassLoader().getResourceAsStream("illegal.txt"), "UTF-8"));
+            String illegalText = null;
+            while ((illegalText = bufferedReader.readLine()) != null) {
+                //将读到的那个字符串存储到集合中
+                illegalTextList.add(illegalText);
+            }
+        }catch (Exception e){
+            e.printStackTrace();
+        }finally {
+            try {
+                bufferedReader.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+    }
+}
+```
+
+V1 版本代码
+
+```java
+public class IllegalCharFilter implements Filter {
+    @Override
+    public void destroy() {
+    }
+
+    @Override
+    public void doFilter(ServletRequest req, ServletResponse resp, FilterChain chain) throws ServletException, IOException {
+        //1. 获取客户端提交的评论内容
+        String content = req.getParameter("content");
+        if (content != null) {
+            //2. 判断content中是否包含非法字符
+            if (content.contains("你大爷的")) {
+                resp.getWriter().write("评论内容中包含非法字符，评论发布失败!!!");
+                return;
+            }
+        }
+        chain.doFilter(req, resp);
+    }
+
+    @Override
+    public void init(FilterConfig config) throws ServletException {
+
+    }
+
+}
+```
+
+xml配置
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<web-app xmlns="http://xmlns.jcp.org/xml/ns/javaee"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://xmlns.jcp.org/xml/ns/javaee http://xmlns.jcp.org/xml/ns/javaee/web-app_4_0.xsd"
+         version="4.0">
+    <filter>
+        <filter-name>EncodingFilter</filter-name>
+        <filter-class>com.atguigu.filter.EncodingFilter</filter-class>
+    </filter>
+    <filter-mapping>
+        <filter-name>EncodingFilter</filter-name>
+        <url-pattern>/*</url-pattern>
+    </filter-mapping>
+
+    <filter>
+        <filter-name>IllegalCharFilter</filter-name>
+        <filter-class>com.atguigu.filter.IllegalCharFilter</filter-class>
+    </filter>
+    <filter-mapping>
+        <filter-name>IllegalCharFilter</filter-name>
+        <url-pattern>/illegal/*</url-pattern>
+    </filter-mapping>
+
+    <servlet>
+        <servlet-name>CommentServlet</servlet-name>
+        <servlet-class>com.atguigu.servlet.CommentServlet</servlet-class>
+    </servlet>
+    <servlet-mapping>
+        <servlet-name>CommentServlet</servlet-name>
+        <url-pattern>/illegal/comment</url-pattern>
+    </servlet-mapping>
+</web-app>
+```
+
+httpServlet代码：
+
+```java
+public class CommentServlet extends HttpServlet {
+    @Override
+    protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+        doGet(request, response);
+    }
+
+    @Override
+    protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+        //1. 获取评论内容
+        String content = request.getParameter("content");
+        //2. 向客户端输出评论内容
+        response.getWriter().write("恭喜你评论成功，评论内容是:"+content);
+    }
+}
+```
+
+
+
 ### 事务管理
 
 创建OpenSessionInViewFilter.java类，用于事务管理，开启拦截事务。
 
 ```java
+public class OpenSessionViewFilter implements Filter {
 
+    @Override
+    public void init(FilterConfig filterConfig) throws ServletException {
+        Filter.super.init(filterConfig);
+    }
+
+    @Override
+    public void doFilter(ServletRequest req, ServletResponse resp, FilterChain chain){
+        try {
+            // 开启事务
+            TransactionManager.begin();
+            // 放行
+            chain.doFilter(req,resp);
+            // 提交事务
+            TransactionManager.submit();
+        } catch (Exception e) {
+            e.printStackTrace();
+            // 回滚事务
+            TransactionManager.rollback();
+        }finally {
+            ConnUtil.closeConn();
+        }
+    }
+
+    @Override
+    public void destroy() {
+        Filter.super.destroy();
+    }
+}
 ```
 
 配置xml配置。
 
 ```xml
-
+<!--filter配置类似Servlet配置-->
+<filter>
+    <filter-name>CharacterEncodingFilter</filter-name>
+    <filter-class>com.fruit.yuluo.myssm.filter.CharacterEncodingFilter</filter-class>
+    <!--配置初始化参数-->
+    <init-param>
+        <param-name>encoding</param-name>
+        <param-value>UTF-8</param-value>
+    </init-param>
+</filter>
+<filter-mapping>
+    <filter-name>CharacterEncodingFilter</filter-name>
+    <url-pattern>*.do</url-pattern>
+</filter-mapping>
+<!--这里有顺序，过滤器链，应该先执行上边的，再执行下边的-->
+<filter>
+    <filter-name>OpenSessionViewFilter</filter-name>
+    <filter-class>com.fruit.yuluo.myssm.filter.OpenSessionViewFilter</filter-class>
+</filter>
+<filter-mapping>
+    <filter-name>OpenSessionViewFilter</filter-name>
+    <url-pattern>*.do</url-pattern>
+</filter-mapping>
 ```
 
 创建 TransActionManager类；作用：用于管理JDBC中的事务；
 
 ```java
+public abstract class TransactionManager {
+    // 开启事务
+    public static void begin(){
+        // 关闭自动提交
+        try {
+            System.out.println("开启事务...");
+            Connection connection = ConnUtil.getConnection();
+            connection.setAutoCommit(false);
+            System.out.println("connect对象的 hashCode："+ connection.hashCode());
+        } catch (SQLException e) {
+            throw new RuntimeException(e.getMessage());
+        }
 
+    };
+    // 提交事务
+    public static void submit(){
+        try {
+            System.out.println("提交事务...");
+            Connection connection = ConnUtil.getConnection();
+            connection.commit();
+            System.out.println("connect对象的 hashCode："+ connection.hashCode());
+            
+        } catch (SQLException e) {
+            throw new RuntimeException(e.getMessage());
+        }
+    };
+    // 回滚事务
+    public static void rollback(){
+        try {
+            System.out.println("回滚事务...");
+            Connection connection = ConnUtil.getConnection();
+            connection.rollback();
+            System.out.println("connect对象的 hashCode："+ connection.hashCode());
+            
+        } catch (SQLException e) {
+            throw new RuntimeException(e.getMessage());
+        }
+    };
+}
 ```
 
 **TransActionManager类需要做的功能：**
@@ -405,20 +746,421 @@ TransactionManager 类的理解和作用：
 	获取 Dao层的连接对象Connection对象：通过ThreadLocal对象获取；
     设置自动提交关闭；
 2、提交事务；
+	正常执行则提交事务；
 3、归滚事务；
+	出现异常则回滚事务；
 ```
 
-1、获取Connection对象：通过TreadLocal获取，因为Connection对象是在Dao层，需要修改数据库连接工具类，使用TreadLocal获取连接，可以在同一个线程上获取数据，数据通信。新建一个工具类：ConnUtil，作用：获取ThreadLocal对象，从而获取Connection对象，同时修改BaseDao中的代码，把初始化数据库连接池，加载配置的方法，创建连接方法，关闭连接方法都移植过来，
+**新建一个工具类：ConnUtil类**
+
+作用：获取ThreadLocal对象，从而获取Connection对象，
+
+获取Connection对象：通过TreadLocal获取，因为Connection对象是在Dao层，需要修改数据库连接工具类，使用TreadLocal获取连接，可以在同一个线程上获取数据，数据通信。同时修改BaseDao中的代码，把初始化数据库连接池，加载配置的方法，创建连接方法，关闭连接方法都移植过来，
 
 ```java
+public class ConnUtil {
+    // 定义静态数据
+    private static String DRIVER;
+    private static String URL;
+    private static String USER;
+    private static String PWD;
+    // 定义静态的 数据库连接池对象
+    private static DruidDataSource dataSource;
+    // 定义一个线程传送带对象
+    private static ThreadLocal<Connection> threadLocal = new ThreadLocal<>();
+    // 设置数据库连接池信息
+    static {
+        try {
+            // 创建Properties Map集合类
+            Properties prop = new Properties();
+            // 获取当前类加载器，获取 jdbc的读取流
+            InputStream in = DButil.class.getClassLoader().getResourceAsStream("jdbc.properties");
+            // 加载配置文件
+            prop.load(in);
 
+            // 获取数据库连接池对象(方式1)
+            // 方式 1：DruidDataSourceFactory.createDataSource(prop)
+            // 直接用 工厂方法 根据 Properties 配置生成一个 DruidDataSource 对象
+            // 配置集中在 jdbc.properties 文件里，支持 Druid 的各种高级配置
+            // dataSource = DruidDataSourceFactory.createDataSource(prop);
+
+            // 创建数据库连接池对象(方式2)
+            // 手动创建 Druid 连接池对象，然后逐个设置属性
+            dataSource = new DruidDataSource();
+
+            // 获取properties文件中的值
+            DRIVER = prop.getProperty("DRIVER");
+            URL = prop.getProperty("URL");
+            USER = prop.getProperty("USER");
+            PWD = prop.getProperty("PWD");
+
+            // 加载mysql驱动(数据库连接池 Druid会自动加载mysql驱动)
+            // Class.forName(DRIVER);
+
+            // 设置用户名，密码
+            dataSource.setDriverClassName(DRIVER);
+            dataSource.setUrl(URL);
+            dataSource.setUsername(USER);
+            dataSource.setPassword(PWD);
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            throw new RuntimeException(e.getMessage());
+        }
+    }
+
+    // 创建连接对象
+    public static Connection createConnection() {
+        try {
+            return dataSource.getConnection();
+        } catch (SQLException e) {
+            e.printStackTrace();
+            throw new RuntimeException(e.getMessage());
+        }
+    }
+
+    // 从线程传送带上获取连接对象
+    public static Connection getConnection(){
+        // 从线程传送带上获取工具
+        Connection connection = threadLocal.get();
+        // 如果不存在
+        if (connection == null){
+            // 创建一个connection对象
+            connection = createConnection();
+            // 放置在传送带上
+            threadLocal.set(connection);
+        }
+        return connection;
+    }
+
+    // 关闭连接对象
+    public static void closeConn(){
+        // 从传送带上取出
+        Connection connection = threadLocal.get();
+        if (connection != null){
+            // 关闭连接
+            try {
+                connection.close();
+            } catch (SQLException e) {
+                throw new RuntimeException(e.getMessage());
+            }
+            threadLocal.set(null);
+        }
+    }
+
+    // 关闭流对象
+    public static void closeStream(Statement stmt,ResultSet rs) {
+        try {
+            if (rs != null) rs.close();
+            if (stmt != null) stmt.close();
+        } catch (SQLException e) {
+            e.printStackTrace();
+            throw new RuntimeException(e.getMessage());
+        }
+    }
+}
 ```
 
-2、BaseDao中的获取连接的方法，和关闭方法进行修改
+### 关闭连接的时机
+
+```java
+// 在一次事务中，同一个 Connection 需要贯穿整个操作（多次 SQL 执行）
+// 如果在 submit() 或 rollback() 里就 close()，那事务中的后续操作就会失效（连接被提前释放了
+
+// 所以这里不应该立即关闭，而应该在 请求处理完成（整个事务结束）后 统一关闭
+
+正确的关闭时机
+// 方式1：在事务提交或回滚后手动关闭
+// 适用于单次业务操作（非容器托管事务）的情况，比如在 Servlet 或 Controller 层的 finally 块里
+try {
+    TransactionManager.begin();
+    // 调用 service -> dao 执行多条 SQL
+    TransactionManager.submit();
+} catch (Exception e) {
+    TransactionManager.rollback();
+} finally {
+    ConnUtil.closeConnection(); // <-- 这里统一关闭连接
+}
+
+// 方式2：使用拦截器（或过滤器 Filter）统一管理
+// 在 Web 应用中更推荐这种方式：
+// 你可以在每个请求进入时开启事务，在请求结束时提交或回滚，然后关闭连接。
+public class OpenSessionFilter implements Filter {
+    @Override
+    public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain)
+            throws IOException, ServletException {
+        try {
+            TransactionManager.begin();
+            chain.doFilter(request, response); // 放行执行业务逻辑
+            TransactionManager.submit();
+        } catch (Exception e) {
+            TransactionManager.rollback();
+            e.printStackTrace();
+            throw new RuntimeException(e);
+        } finally {
+            ConnUtil.closeConnection(); // <-- 统一关闭连接
+        }
+    }
+}
+// 这样每个请求只使用一个数据库连接，用完即释放
+    
+// 方式3：ConnUtil.closeConnection() 的实现示例
+package com.fruit.yuluo.myssm.utils;
+
+import java.sql.Connection;
+import java.sql.SQLException;
+
+public class ConnUtil {
+    private static ThreadLocal<Connection> threadLocal = new ThreadLocal<>();
+
+    public static Connection getConnection() throws SQLException {
+        Connection conn = threadLocal.get();
+        if (conn == null) {
+            conn = DataSourceUtil.getDataSource().getConnection();
+            threadLocal.set(conn);
+        }
+        return conn;
+    }
+
+    public static void closeConnection() {
+        Connection conn = threadLocal.get();
+        if (conn != null) {
+            try {
+                conn.close();
+            } catch (SQLException e) {
+                e.printStackTrace();
+            } finally {
+                threadLocal.remove();
+            }
+        }
+    }
+}
+// 这样每个线程（每个请求）拥有自己的连接，避免线程间冲突。    
+```
+
+2、修改BaseDao中的获取连接的方法，和关闭方法进行修改
 
 ```ts
-BaseDao中的获取连接的方法，通过调用 TransActionManager 中的获取连接的方法实现。
-关闭方法不关闭Connect连接，关闭其他两个，因为同一个事务不同的操作，使用的是同一个连接。
+public abstract class BaseDao<T> {
+    // 定义泛型的名称
+    private String entityClassName;
+    // 定义ResultSet结果集
+    private ResultSet rs;
+    // 连接池对象
+    Connection connection = null;
+    // sql语句对象
+    PreparedStatement pstm = null;
+
+    // 在无参构造中，获取泛型类型，子类调用构造，默认调用父类的无参构造
+    public BaseDao(){
+        // 调用
+        getEntityClassName();
+
+    }
+    // 获取子类实例给父类泛型T传入的名称
+    private void getEntityClassName(){
+        // 通过子类实例对象，获取父类（自己）的泛型T的实际名称
+        // 此处的this代表的是FruitDaoImpl实例，而不是BaseDao
+        // this.getClass()得到的就是FruitDaoImpl的Class对象
+        // getGenericSuperclass() 获取带有泛型的父类,因此可以获取到 BaseDao<Fruit>
+        // 因为我们是这样定义的：class FruitDaoImpl extends BaseDao<Fruit>，所以泛型父类是： BaseDao<Fruit>
+        Type genericSuperclass = this.getClass().getGenericSuperclass();
+        // 把父类的泛型信息，从通用的 Type 强转为 ParameterizedType，以便后续获取实际的泛型参数。
+        // 强转为ParameterizedType类型
+        ParameterizedType parameterizedType = (ParameterizedType) genericSuperclass;
+        // getActualTypeArguments 获取实际的类型参数
+        Type[] actualTypeArguments = parameterizedType.getActualTypeArguments();
+        // 因为当前BaseDao<T>后面只有一个泛型位置，所以此处我们使用的是[0]
+        // getTypeName() 获取类型名称
+        // getTypeName() 返回完整类名，例如 "com.xxx.pojo.Fruit"
+        String typeName = actualTypeArguments[0].getTypeName();
+        entityClassName = typeName;
+    }
+
+    // 定义设置参数的方法
+    private void setParams(PreparedStatement psmt , Object... params) throws SQLException {
+        if(params!=null && params.length>0){
+            for (int i = 0; i < params.length; i++) {
+                psmt.setObject(i+1,params[i]);
+            }
+        }
+    }
+
+    // 执行增删改的操作
+    protected int executeUpdate(String sql,Object ...params){
+        // 去除空格，并转为小写
+        sql = sql.trim().toUpperCase();
+        // 设置标记是否是插入语句
+        boolean insertFlag = sql.startsWith("INSERT INTO");
+        // 获取连接对象
+        connection = ConnUtil.getConnection();
+
+        try {
+            // 判断是否是插入语句
+            if (insertFlag){
+                // 获取sql执行语句对象,插入语句
+                pstm = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS);
+            }else{ // 非插入语句
+                pstm = connection.prepareStatement(sql);
+            }
+            // 给sql语句传入参数
+            setParams(pstm,params);
+
+            // 执行sql
+            int resRow = pstm.executeUpdate();
+            // 返回
+            if(insertFlag) { // 如果是插入语句
+                // 获取自增id
+                rs = pstm.getGeneratedKeys();
+                // 如果返回有值
+                if(rs.next()){
+                    // 获取第一列数据
+                    return (rs.getInt(1));
+                }
+            }else{
+                return resRow; // 返回默认受影响行数
+            }
+        } catch (SQLException e) {
+            // e.printStackTrace();
+            // 向外抛出异常
+            throw new BaseDaoRunTimeException(e.getMessage());
+        } finally {
+            // 关闭流
+            ConnUtil.closeStream(pstm,rs);
+        }
+        return 0;
+    }
+
+    // 查询列表的方法
+    protected List<T> executeQuery(String sql,Object ...params){
+        List<T> list = new ArrayList<>();
+        connection = ConnUtil.getConnection();
+        try {
+            // 获取statement对象
+             pstm = connection.prepareStatement(sql);
+             // 设置SQL参数
+            setParams(pstm,params);
+
+            // 执行SQL
+            rs = pstm.executeQuery();
+            // 方式1：通过反射来处理
+            // 方式2：通过数据解析器来处理（见JDBC章节）
+            // 获取结果集的元数据，也就是每一行的数据
+            ResultSetMetaData metaData = rs.getMetaData();
+            // 获取元数据的列数
+            int columnCount = metaData.getColumnCount();
+            // 遍历结果集
+            while(rs.next()){
+                // 通过反射获取实体类的Class对象
+                Class entityClass = ClassUtil.getEntityClass(entityClassName);
+                // 通过反射创建实例,强转为T类型
+                T instance = (T)ClassUtil.createInstance(entityClassName);
+                // 遍历
+                for (int i = 0; i < columnCount; i++) {
+                    // 读取列名
+                    String columnName = metaData.getColumnName(i + 1);
+                    // 获取当前行指定列的值
+                    Object columnValue = rs.getObject(i + 1);
+                    // 给实例赋值
+                    ClassUtil.setProperty(instance,columnName,columnValue);
+                }
+                // 集合中添加元素
+                list.add(instance);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            throw new BaseDaoRunTimeException(e.getMessage());
+        }finally {
+            // 老版本关闭流
+            // DButil.close(connection,pstm,rs);
+            // 使用事务
+            ConnUtil.closeStream(pstm,rs);
+        }
+        return list;
+    }
+
+    // 查询单个方法
+    protected T load(String sql,Object ...params){
+        // 获取连接
+        connection = ConnUtil.getConnection();
+        try{
+            // 获取statement对象
+            pstm = connection.prepareStatement(sql);
+            // 设置SQL参数
+            setParams(pstm,params);
+
+            // 执行SQL
+            rs = pstm.executeQuery();
+            // 获取结果集的元数据，也就是每一行的数据
+            ResultSetMetaData metaData = rs.getMetaData();
+            // 获取元数据的列数
+            int columnCount = metaData.getColumnCount();
+            // 遍历结果集
+            if(rs.next()){
+                // 获取水果类的实体类
+                Class entityClass = ClassUtil.getEntityClass(entityClassName);
+                // 创建实例
+                T instance = (T)ClassUtil.createInstance(entityClassName);
+                // 给实例附属性
+                for(int i = 1 ; i<=columnCount;i++){
+                    //获取列明,其实我们故意将列名和属性名保持一致，就是为了此处的反射赋值
+                    String columnName = metaData.getColumnName(i);
+                    Object columnValue = rs.getObject(i);
+                    ClassUtil.setProperty(instance,columnName,columnValue);
+                }
+                // 把这个实例返回
+                return instance;
+            }
+        }catch (SQLException e) {
+            throw new RuntimeException(e);
+
+        }finally {
+            // 关闭连接
+            ConnUtil.closeStream(pstm,rs);
+        }
+        return null;
+    }
+    // 查询复杂SQL的方法，此方法的返回值为List集合，List集合中存放的是Object类型的数组
+    protected List<Object[]> executeMathQuery(String sql, Object ...params){
+        List<Object[]> list = new ArrayList<>();
+        connection = ConnUtil.getConnection();
+        try {
+            // 获取statement对象
+            pstm = connection.prepareStatement(sql);
+            // 设置SQL参数
+            setParams(pstm,params);
+
+            // 执行SQL
+            rs = pstm.executeQuery();
+            // 方式1：通过反射来处理
+            // 方式2：通过数据解析器来处理（见JDBC章节）
+            // 获取结果集的元数据，也就是每一行的数据
+            ResultSetMetaData metaData = rs.getMetaData();
+            // 获取元数据的列数
+            int columnCount = metaData.getColumnCount();
+            // 遍历结果集
+            while(rs.next()){
+                // 创建一个数组
+                Object[] arr = new Object[columnCount];
+                // 遍历
+                for (int i = 0; i < columnCount; i++) {
+                    // 获取当前行指定列的值
+                    Object columnValue = rs.getObject(i + 1);
+                    // 把当前行的值放在数组中
+                    arr[i] = columnValue;
+                }
+                // 集合中添加元素
+                list.add(arr);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            throw new BaseDaoRunTimeException(e.getMessage());
+        }finally {
+            ConnUtil.closeStream(pstm,rs);
+        }
+        return list;
+    }
+}
 ```
 
 ## 统一异常处理
@@ -432,16 +1174,38 @@ BaseDao中的获取连接的方法，通过调用 TransActionManager 中的获�
 3、定义一个 类的运行时异常。BaseDaoRunTimeException 类，继承 RuntimeException 类。
 
 ```java
+package com.fruit.yuluo.myssm.exception;
+
+/*
+* 封装一个异常
+* */
+public class BaseDaoRunTimeException extends RuntimeException{
+    public BaseDaoRunTimeException(String msg){
+        super(msg);
+    }
+}
 
 ```
 
 4、JDBC中大部分的异常都是编译时异常，分别在 BaseDao中抛出运行时异常，DispatcherServlet抛出运行时异常，ConUtil类中抛出运行时异常，TransActionManeger类中抛出运行时异常；
 
 ```ts
+在 BaseDao 类、ConnUtil类、DispatcherServlet类、TransactionManager类、OpenSessionViewFilter中，catch到异常后，抛出异常。
+
+catch (Exception e) {
+    e.printStackTrace();
+    throw new RuntimeException("未找到"+oper+"方法");
+}
+
 // 方式1：向外抛出自定义异常
 throw new BaseDaoRunTimeException(e.getMessage)
 // 方式2：向外抛出运行时异常
 throw new RuntimeException("xxxxxx")
+throw new BaseDaoRunTimeException(e.getMessage());
+// 打印 异常堆栈信息
+e.printStackTrace();
+// 抛出运行时异常
+throw new RuntimeException("未找到"+oper+"方法");
 ```
 
 ### 抛异常区别
