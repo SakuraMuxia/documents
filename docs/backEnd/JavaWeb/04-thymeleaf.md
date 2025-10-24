@@ -478,6 +478,16 @@ th:text="|商品名：${product.name}，价格：${product.price} 元|"
 th:text="|欢迎 ${user} 登录|"
 ```
 
+动态拼接 一段 JavaScript 调用
+
+```java
+th:href="|javascript:delTopic(${topic.id})|"
+    假设 topic.id = 10，渲染后浏览器看到的 HTML 实际是
+<a href="javascript:delTopic(10)">删除</a>
+    这等价于点击这个链接时执行
+delTopic(10)
+```
+
 **布尔值 / 条件判断**
 
 ```html
