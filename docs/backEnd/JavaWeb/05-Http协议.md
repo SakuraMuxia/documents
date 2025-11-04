@@ -237,3 +237,257 @@ MIME类型定义参考：
 - 访问了WEB-INF目录下的资源
 - Web应用启动的时候，控制台已经抛出异常，导致整个Web应用不可用，访问任何资源都是404
 - 服务器端缓存
+
+## Session
+
+**Session（会话）** 是服务器在用户访问网站时，为该用户创建的一个「会话状态」记录。
+ 它通常用于存储用户登录信息、购物车数据、权限状态等临时信息。
+
+在 HTTP 是「无状态协议」的前提下，Session 用于**保持用户状态**。
+
+例如：
+
+- 用户登录后，服务器生成一个 Session 来记录该用户的登录状态；
+- 用户在后续请求中带上 Session ID，服务器就能识别出这是同一个用户。
+
+### 常用操作方法
+
+PHP
+
+```php
+// 启动 session（必须在输出前）
+session_start();
+
+// 设置 session
+$_SESSION['username'] = 'liu';
+
+// 获取 session
+echo $_SESSION['username'];
+
+// 删除单个 session
+unset($_SESSION['username']);
+
+// 删除所有 session
+session_destroy();
+
+```
+
+Node.js 使用 `express-session`
+
+```js
+const session = require('express-session');
+app.use(session({
+  secret: 'my_secret',
+  resave: false,
+  saveUninitialized: true,
+  cookie: { maxAge: 60000 } // 有效期 1 分钟
+}));
+
+// 设置 session
+req.session.user = { name: 'liu' };
+
+// 读取 session
+console.log(req.session.user);
+
+// 销毁 session
+req.session.destroy();
+
+```
+
+Python Flask 框架
+
+```python
+from flask import Flask, session
+app.secret_key = 'secret'
+
+@app.route('/')
+def index():
+    session['user'] = 'liu'
+    return session['user']
+
+```
+
+Java中
+
+| 方法                                      | 说明                            |
+| ----------------------------------------- | ------------------------------- |
+| `getId()`                                 | 获取当前 Session 的唯一 ID      |
+| `setAttribute(String name, Object value)` | 向 Session 中保存数据           |
+| `getAttribute(String name)`               | 从 Session 中获取数据           |
+| `removeAttribute(String name)`            | 删除指定属性                    |
+| `invalidate()`                            | 使 Session 立即失效（登出常用） |
+| `getCreationTime()`                       | 获取 Session 创建时间           |
+| `getLastAccessedTime()`                   | 获取最后一次访问时间            |
+| `setMaxInactiveInterval(int seconds)`     | 设置最大空闲时间（单位：秒）    |
+| `getMaxInactiveInterval()`                | 获取 Session 最大空闲时间       |
+
+### 使用Session
+
+创建或获取 Session
+
+```java
+// 若没有 Session，会自动创建一个新的
+HttpSession session = request.getSession(); 
+// 如果只想获取已有 Session（不创建新的
+HttpSession session = request.getSession(false);
+if (session == null) {
+    // 当前请求没有 Session
+}
+```
+
+设置 Session 属性
+
+```java
+session.setAttribute("username", "liu");
+session.setAttribute("role", "admin");
+```
+
+获取 Session 属性
+
+```java
+String username = (String) session.getAttribute("username");
+System.out.println("当前用户：" + username);
+```
+
+删除或使 Session 失效
+
+```java
+session.removeAttribute("username"); // 删除单个属性
+session.invalidate();                // 销毁整个 Session
+```
+
+设置 Session 有效时长
+
+```java
+// 在代码中设置
+session.setMaxInactiveInterval(30 * 60); // 30分钟（单位：秒）
+
+// 在 web.xml 中全局设置
+<session-config>
+    <session-timeout>30</session-timeout> <!-- 单位：分钟 -->
+</session-config>
+
+// Spring Boot 中配置
+server:
+  servlet:
+    session:
+      timeout: 30m   # 30分钟
+```
+
+Session 生命周期
+
+```java
+创建：
+ 1 用户第一次访问时自动创建（request.getSession()）。
+
+活跃期：
+ 1 在 setMaxInactiveInterval() 指定的时间内，用户持续访问会延长 Session 生命周期。
+
+过期：
+ 1 超过最大空闲时间（无请求交互）后，服务器会销毁 Session。
+
+销毁：
+ 1 Session 超时
+ 2 调用 invalidate() 手动销毁
+ 3 服务器重启或内存清理
+```
+
+
+
+### 过期机制
+
+**服务器端存储的 Session 生命周期**
+
+- 每个 Session 通常有一个 `maxInactiveInterval`（最大空闲时间）。
+- 默认时长根据语言/框架不同而异：
+  - PHP：默认 24 分钟 (`session.gc_maxlifetime = 1440`)
+  - Express：可通过 `cookie.maxAge` 控制
+  - Java：默认 30 分钟，可在 `web.xml` 中配置
+
+```xml
+<session-config>
+    <session-timeout>30</session-timeout> <!-- 单位：分钟 -->
+</session-config>
+
+```
+
+**客户端 Cookie 中保存的 Session ID 生命周期**
+
+- 浏览器端保存的 Cookie（比如 `PHPSESSID`）如果过期或被删除，Session 就无法再被识别。
+- 通常与服务器端 Session 同步设置。
+
+⚠️ 注意：
+
+即使 Cookie 还在，若服务器清理了 Session 存储（内存/Redis/文件），Session 也会失效。
+
+**Session 与 Cookie 的关系**
+
+| 项目     | Session                         | Cookie           |
+| -------- | ------------------------------- | ---------------- |
+| 存储位置 | 服务器端                        | 客户端（浏览器） |
+| 安全性   | 较高（数据不暴露）              | 较低（数据可见） |
+| 容量     | 无明显限制                      | 通常 4KB         |
+| 依赖     | 通常依赖 Cookie 存放 Session ID | 无需依赖 Session |
+
+Session 实际上依赖 **Cookie（或 URL 参数）** 来在每次请求中标识用户身份。
+
+### 存储方式
+
+| 存储方式        | 特点                     |
+| --------------- | ------------------------ |
+| 内存（默认）    | 速度快，但服务重启后丢失 |
+| 文件系统        | 简单，但并发性能一般     |
+| Redis/Memcached | 常用于分布式项目         |
+| 数据库          | 可持久化存储，适合小项目 |
+
+常见问题与注意事项
+
+**Session 丢失**
+
+- 原因可能是服务器重启、Session 存储未共享、Cookie 禁用等。
+
+**Session 固定攻击**
+
+- 解决方式：登录后重新生成 Session ID。
+
+**Session 清理**
+
+- 定期清理过期 Session，避免内存或存储过多。
+
+**前后端分离项目**
+
+- 常使用 Token（如 JWT）替代传统 Session。
+
+### 应用场景
+
+用户登录验证
+
+```java
+// 登录接口
+protected void doPost(HttpServletRequest request, HttpServletResponse response) throws IOException {
+    String username = request.getParameter("username");
+    String password = request.getParameter("password");
+
+    if ("admin".equals(username) && "123456".equals(password)) {
+        HttpSession session = request.getSession();
+        session.setAttribute("user", username);
+        response.getWriter().write("登录成功");
+    } else {
+        response.getWriter().write("用户名或密码错误");
+    }
+}
+
+```
+
+访问权限检查
+
+```java
+HttpSession session = request.getSession(false);
+if (session == null || session.getAttribute("user") == null) {
+    response.sendRedirect("/login.jsp");
+} else {
+    // 已登录，继续执行
+}
+
+```
+

@@ -1037,6 +1037,34 @@ fetch upstream: git -c http.proxy="127.0.0.1:xxxx" fetch upstream
 *注意： fetch 后面不能 -c，clone 是可以的
 ```
 
+## npm设置代理
+
+```ts
+// 全局设置 npm 代理（推荐）
+npm config set proxy http://127.0.0.1:7890
+npm config set https-proxy http://127.0.0.1:7890
+
+// 验证
+npm config get proxy
+npm config get https-proxy
+
+// 取消代理
+npm config delete proxy
+npm config delete https-proxy
+
+// 如果你的代理是 SOCKS5（如 Clash 的 7890 或 Shadowsocks 的 1080）
+export HTTP_PROXY="socks5://127.0.0.1:7890"
+export HTTPS_PROXY="socks5://127.0.0.1:7890"
+npm install
+// 注意：这种方式只在当前 Git Bash 会话 中有效，重启后会失效。
+// 如果你想永久生效，可以加到 ~/.bashrc
+echo 'export HTTP_PROXY="socks5://127.0.0.1:7890"' >> ~/.bashrc
+echo 'export HTTPS_PROXY="socks5://127.0.0.1:7890"' >> ~/.bashrc
+source ~/.bashrc
+```
+
+
+
 ## git提交问题
 
 ### 删除远程提交

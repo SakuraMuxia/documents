@@ -912,7 +912,7 @@ if配合not关键词和unless配合原表达式效果是一样的，看自己的
 </table>
 ```
 
-### 模板文件
+## fragment
 
 **应用场景**
 
@@ -922,7 +922,7 @@ if配合not关键词和unless配合原表达式效果是一样的，看自己的
 
 **操作步骤**
 
-创建页面的公共代码片段
+创建页面的公共代码片段，类似于vue中的组件，template
 
 使用th:fragment来给这个片段命名
 
@@ -956,6 +956,92 @@ if配合not关键词和unless配合原表达式效果是一样的，看自己的
     div标签的原始内容
 </div>
 ```
+
+## 金额日期显示
+
+**金额显示（NumberUtils）**
+
+方法 1：在控制层格式化后再传入模板
+
+```java
+import org.apache.commons.lang3.math.NumberUtils;
+import java.text.DecimalFormat;
+
+double price = NumberUtils.toDouble("1234.5");
+DecimalFormat df = new DecimalFormat("#,##0.00");
+String formattedPrice = df.format(price);
+
+model.addAttribute("price", formattedPrice);
+
+```
+
+方法 2：在 Thymeleaf 中使用内置格式化
+
+```html
+<p>金额：￥<span th:text="${#numbers.formatDecimal(price, 1, 2)}"></span></p>
+```
+
+> #numbers.formatDecimal(数值, 最少小数位, 最多小数位)
+>
+> 示例：`#numbers.formatDecimal(1234.5, 1, 2)` → `1,234.5`
+
+```java
+#numbers.formatDecimal(数字, 整数位最少位数, 'COMMA', 小数位数, 'POINT')
+```
+
+| 参数           | 含义                                                  |
+| -------------- | ----------------------------------------------------- |
+| 数字           | 要格式化的数值（可以是表达式，如 `price * buyCount`） |
+| 整数位最少位数 | 不足时补零，例如写 `2` 表示至少两位整数               |
+| `'COMMA'`      | 是否启用千分位分隔（固定写法）                        |
+| 小数位数       | 保留多少位小数                                        |
+| `'POINT'`      | 小数点标记（固定写法）                                |
+
+```html
+<td th:text="${#numbers.formatDecimal(36.8, 0, 'COMMA', 2, 'POINT')}"></td>
+```
+
+**日期显示**
+
+日期格式化通常依赖 Java 自带的 `DateTimeFormatter` 或 `DateUtils`
+
+方法 1：后台处理
+
+```java
+import org.apache.commons.lang3.time.DateUtils;
+import java.text.SimpleDateFormat;
+import java.util.Date;
+
+Date now = new Date();
+SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+String formattedDate = sdf.format(now);
+
+model.addAttribute("now", formattedDate);
+
+```
+
+模版中
+
+```html
+<p>当前时间：<span th:text="${now}"></span></p>
+```
+
+方法2：Thymeleaf 内置格式化
+
+```html
+<p>创建时间：
+    <span th:text="${#dates.format(order.createTime, 'yyyy-MM-dd HH:mm:ss')}"></span>
+</p>
+这说明 Thymeleaf 解析 ${#dates.format(...)} 时，类型不兼容。
+它内部其实调用的是 SimpleDateFormat.format()，只能接收 java.util.Date 类型
+```
+
+```ts
+Thymeleaf 3.0 及以上（Spring Boot 2.x+）已经内置了专门处理 Java 8 时间类型的工具对象
+<span th:text="${#temporals.format(orderBean.orderDate, 'yyyy-MM-dd HH:mm:ss')}"></span>
+```
+
+
 
 ## 基本使用2
 
