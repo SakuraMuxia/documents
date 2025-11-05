@@ -707,6 +707,51 @@ file-setting-builder-compiler-java compiler-additional command line 设置 -para
 
 同时在 Other Setting - setting for new Project中设置一遍，目的是为了在其他的项目中也生效。
 
+```ts
+1. 业务层引入
+注册功能包含了很多的DAO操作。如果没有业务层，那么这些业务逻辑全部散在控制层，也就是散在servlet中。
+其实最好的解决方案是：提供业务层组件，将复杂的业务逻辑（多个DAO方法的调用）全部封装在一个业务方法中，然后控制层（Servlet）只需要调用这个业务方法即可，不用拘泥于注册的业务逻辑细节。
+2. 耦合、依赖
+控制层依赖于业务层；业务层依赖于数据访问层
+我们追求的目标是：解耦（降低耦合，理想状况是0耦合）
+解决方案：BeanFactory
+public interface BeanFactory{
+  Object getBean(String id);
+}
+在BeanFactory的眼中，不论是业务层还是控制层还是数据访问层组件，都是一个一个的javabean
+只不过这些javabean之间存在依赖关系
+public class FruitServiceImpl {
+  private FruitDao fruitDao = new FruitDaoImpl();
+}
+->
+private FruitDao fruitDao = null ;
+变成上述形式之后运行，肯定报空指针。
+也就意味着，在使用fruitDao之前，必须得给它赋值
+<bean id="fruitDao" class="com.atguigu.dao.impl.FruitDaoImpl"/>
+<bean id="fruitService" class="com.atguigu.service.impl.FruitServiceImpl">
+   <property name="fruitDao" ref="fruitDao"/>
+</bean>
+上面仅仅是一种描述，描述了两个信息：
+① 我们需要生产两个bean实例：fruitDao,fruitService
+② 这两个bean实例是有关系的，是有依赖关系的，我们需要注入依赖关系
+因此，我们又编写了BeanFactory这个接口的实现类：ClassPathXmlApplicationContext
+这个实现类的核心方法中有两个重要的for循环：
+第一个循环解决了两个bean组件的创建工作
+第二个循环解决了两个bean组件之间的依赖关系
+3. IOC/DI
+IOC : 控制反转 ， I：反转inverse ， C：控制，controller
+之前，FruitServiceImpl：
+public class FruitServiceImpl {
+  private FruitDao fruitDao = new FruitDaoImpl();
+}
+也就意味着，fruitDao这个实例对象的生命周期是由fruitService组件控制的。设置成成员变量或者方法内部的临时变量，那么它的生命周期是不一样的。另外，何时销毁也是由程序员去考虑的。另外，dao这个实例到底是不是单例，到底是不是（懒汉模式....)都是需要程序员去考虑的
+所以此时BeanFactory出现了。这个组件在程序启动时，就准备好了所有的bean实例组件，然后组装他们之间的依赖关系。也就意味着，这些组件的生命周期（控制权）从程序员的手中反转给BeanFactory去管理。
+DI：Dependency Injection 。Dependency：依赖 , Injection：注入
+IOC侧重于阐述对象的生命周期控制权。DI侧重于阐述依赖关系的注入（维护）
+```
+
+
+
 ## API
 
 ### OGNL

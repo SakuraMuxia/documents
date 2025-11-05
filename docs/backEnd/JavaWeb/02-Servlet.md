@@ -346,6 +346,9 @@ public abstract class HttpServlet extends GenericServlet {
    // 如果请求参数中一个参数有多个值，可以使用getParameterValues获取，得到一个数组
    // localhost/fruit.do?hobby=football&hobby=pingpang&hobby=basketball
    String[] hobbys = request.getParameterValues("hobby");
+   
+   // 获取请求参数中的所有参数
+   String[] names = request.getParameterNames();
    ```
 
    （获取表单 / URL 里传过来的参数）
@@ -1541,7 +1544,28 @@ public class Hello01Servlet extends GenericServlet {
 >
 > 当第一次给Hello01Servlet发请求时，它会实例化、初始化、服务。以后每次访问都是直接服务；
 >
+> 所有的客户端请求都共享同一个servlet实例，因此servlet是线程不安全的。
+>
 > 当tomcat服务器停止时，Hello01Servlet的销毁方法会被执行；
+
+```java
+// 不要去定义 成员变量，如何非要定义成员变量，必须要遵循
+// 不改变成员变量的值，或者不根据成员变量的值来做业务走向的判断
+public class HelloServlet extends HttpServlet{
+    private Integer num = 1;
+    protected void service(req,resp){
+        num ++;
+        if(num %2 ){
+            操作1
+        }else{
+            操作2
+        }
+    }
+}
+java 的多线程执行是 CPU片 ，当轮训到这个线程1执行时，num = 2，但是这时，线程2进来，由于是单实例模式，num的值直接是2，然后进行操作变为3，线程2执行的是操作2，这样当前线程的执行收到了其他线程的影响，这样就不是线程安全的，所以servlet是单实例模式，线程不安全。
+```
+
+
 
 ## 启动时机
 
