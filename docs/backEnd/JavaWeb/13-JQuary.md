@@ -395,7 +395,7 @@ prev ~ sibings 之后的兄弟元素选择器：匹配prev 元素之后的所有
 
 #### 内容过滤器
 
-![image-20251106162708033](000-images/13-JQuary/image-20251106162708033.png)
+![image-20251106162708033](https://2216847528.oss-cn-beijing.aliyuncs.com/asset/image-20251106162708033.png)
 
 ```html
 <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
