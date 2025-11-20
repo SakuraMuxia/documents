@@ -1,4 +1,4 @@
-# 书城项目
+# ProjectThy5
 
 ## 设计数据库
 
@@ -1512,5 +1512,135 @@ thymeleaf中的语法，把重复的代码封装成一个组件，然后引入�
 ```html
 <!-- 在页面上引用 -->
 <div class="header-right" th:include="component/title::welcome" ></div>
+```
+
+## 前后端分离(异步)
+
+之前同步的请求，是指页面的加载和请求是同时运行的。
+
+异步的请求，是页面的加载和渲染，和请求是分开的运行的。
+
+### 前端登陆请求
+
+```java
+// 通过axios 发送异步请求
+axios({
+    method:"post",
+    url:"user.do",
+    params:{
+        oper:"login",
+        uname:uname.value,
+        pwd:pwd.value
+    }
+    
+}).then(res => {
+    cosole.log(res)
+    // 跳转页面到首页
+}).catch(e => {
+    console.log(e)
+})
+```
+
+
+
+### 后端响应请求
+
+```java
+// userController
+public String login(String uname,String pwd,HttpSession session,HttpServletResponse resp){
+    // 客户端发送异步请求，
+    
+    // 服务器查询数据库验证
+    
+    // 服务器做出响应
+    
+    // 客户端接收到服务器的响应之后，再去考虑下一步操作
+    
+    
+}
+```
+
+更新DispatcherServlet部分代码
+
+```java
+// 添加json部分代码
+// 设置 响应数据 的格式
+// 设置响应数据的格式
+```
+
+## 图书首页展示(异步)
+
+前端vue加载完成之后发送获取图片列表请求
+
+```js
+
+```
+
+后端响应图片列表数据
+
+```java
+// BookController 
+
+// 把数据转为 json类型的字符串
+
+// 在list 方法中 把 booklist 数据 响应给客户端
+
+```
+
+## 响应格式统一规范
+
+数据传输模型 用于响应客户端的数据类型，类似pojo对象
+
+创建 dto 目录（data transfer Object）dto/Result.java
+
+```java
+
+```
+
+在登陆响应和图书列表响应，使用dto来规范响应格式
+
+```java
+
+```
+
+前端修改数据格式的解析
+
+```java
+
+```
+
+## 加入购物车请求
+
+前端发送加入购物车请求
+
+```js
+
+```
+
+后端响应购物车请求
+
+```java
+
+```
+
+展示购物车列表
+
+```js
+// 前端发送获取购物车列表请求
+
+
+// 前端渲染购物车数据
+
+
+```
+
+```java
+// 后端响应购物车列表
+```
+
+封装一个工具类用来返回json前缀信息
+
+```java
+
 ```
 

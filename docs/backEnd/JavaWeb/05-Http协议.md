@@ -491,3 +491,105 @@ if (session == null || session.getAttribute("user") == null) {
 
 ```
 
+## 解析JSON数据
+
+前端通过 axios 发送请求
+
+```js
+const params = {
+  current: 1,
+  size: 10,
+  filter: 'status=active',
+};
+
+const data = {
+  extraData: 'example', // 这是请求体的数据
+};
+
+axios.post('https://example.com/api/devicelist', data, { params })
+  .then((response) => console.log('成功:', response.data))
+  .catch((error) => console.error('失败:', error));
+```
+
+后端解析前端发送的 请求参数 数据
+
+```java
+@WebServlet("/test")
+public class TestServlet extends HttpServlet {
+
+    @Override
+    protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws IOException {
+        // req.getParameter("name") 这种只能获取 QueryString中的数据
+        String name = req.getParameter("name");
+        String age = req.getParameter("age");
+        
+        
+        
+        // 响应
+        resp.getWriter().write("GET 参数：" + name + "，年龄：" + age);
+    }
+
+    @Override
+    protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws IOException {
+        
+        // req.getParameter("name") 这种只能获取 QueryString中的数据
+        req.setCharacterEncoding("UTF-8"); // 防止中文乱码
+        String username = req.getParameter("username");
+        String password = req.getParameter("password");
+
+        // 创建一个读取流 获取 请求体 中的数据
+        BufferedReader reader = req.getReader();
+        // 创建一个StringBuilder，往String中添加数据
+        StringBuilder stringBuilder = new StringBuilder();
+        String temp = null;
+        while((temp = reader.readLine()) !=null){
+            // 往String中追加数据
+            stringBuilder.append(temp)
+        }
+        // 转为String打印
+        String jsonStr = stringBuilder.toString();
+        // 把 String类型的转为 对象类型
+       	// 使用第三方jar包 Gson 转换
+        // fromJson 转为对象类型
+        // toJson 转为json字符串
+        Gson gson = new Gson();
+        User user = gson.fromJson(jsonStr,User.class);
+        // 响应
+        // 把对象类型的转为 String类型
+        resp.getWriter().write("POST 表单：用户名=" + username + ", 密码=" + password);
+    }
+}
+
+```
+
+后端响应一个 Json字符串 给前端
+
+```java
+@WebServlet("/test")
+public class TestServlet extends HttpServlet {
+
+    @Override
+    protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws IOException {
+        // req.getParameter("name") 这种只能获取 QueryString中的数据
+        String name = req.getParameter("name");
+        String age = req.getParameter("age");
+        // 响应
+        resp.getWriter().write("GET 参数：" + name + "，年龄：" + age);
+    }
+    @Override
+    protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws IOException {
+        
+        req.setCharacterEncoding("UTF-8"); // 防止中文乱码
+        req.setContentType("text/html;charset=utf-8");
+        User user = new User("Aqua","123123");
+        Gson gson = new Gson();
+        String userStr = gson.toJson(user)
+        // 响应
+       	// resp.getWriter().write(userStr);
+        PrintWriter out = resp.getWriter();
+        out.print(userStr);
+        out.flush;
+    }
+}
+```
+
